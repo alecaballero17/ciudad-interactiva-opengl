@@ -19,8 +19,9 @@ public final class AppCiudad {
     private static final int ANCHO = 1280, ALTO = 720;
     private static final int TAMANO_CIUDAD = 11;
     private static final float CELDA = 10.0f, LIMITE = 55.0f;
-    // La colisión representa el chasis, no toda la carrocería visual del minibús.
-    private static final float COLISION_MITAD_ANCHO = .78f, COLISION_MITAD_LARGO = 2.15f;
+    // Huella de conducción: compacta alrededor de los ejes para no cerrar carriles estrechos.
+    // La carrocería conserva su escala visual, pero esta AABB evita paredes invisibles al maniobrar.
+    private static final float COLISION_MITAD_ANCHO = .42f, COLISION_MITAD_LARGO = .78f;
     private static final float VELOCIDAD = 15.0f, GIRO = 115.0f;
     private static final float RADIO_ENTREGA = 3.5f;
     private static final float[][] INTERSECCIONES = {
