@@ -833,6 +833,11 @@ public final class AppCiudad {
         dibujarCubo(vehiculo.getX(), 1.18f, vehiculo.getZ(), 3.16f, .28f, 7.26f, vehiculo.getAngulo(), .04f, .34f, .72f, 0, 0, 0);
         dibujarCubo(vehiculo.getX(), .52f, vehiculo.getZ(), 3.18f, .26f, 7.28f, vehiculo.getAngulo(), .72f, .06f, .07f, 0, 0, 0);
         dibujarCubo(vehiculo.getX(), 2.08f, vehiculo.getZ(), 2.72f, .18f, 6.28f, vehiculo.getAngulo(), .045f, .075f, .11f, 0, 0, 0);
+        // Techo cerrado con plano propio: evita que el interior parezca hueco desde la cámara elevada.
+        dibujarPlano(vehiculo.getX(), 2.20f, vehiculo.getZ(), 2.66f, 6.20f, vehiculo.getAngulo(), .91f, .90f, .82f, .03f, .03f, .02f);
+        dibujarCubo(vehiculo.getX() - ladoX * 1.28f, 2.25f, vehiculo.getZ() - ladoZ * 1.28f, .09f, .10f, 5.88f, vehiculo.getAngulo(), .03f, .25f, .58f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX() + ladoX * 1.28f, 2.25f, vehiculo.getZ() + ladoZ * 1.28f, .09f, .10f, 5.88f, vehiculo.getAngulo(), .03f, .25f, .58f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), 2.31f, vehiculo.getZ() - adelanteZ * .70f, 1.08f, .18f, 1.18f, vehiculo.getAngulo(), .14f, .18f, .20f, 0, 0, 0);
 
         // Parabrisas delantero y rótulo de línea estilizado.
         float frenteX = vehiculo.getX() + adelanteX * 3.62f, frenteZ = vehiculo.getZ() + adelanteZ * 3.62f;
@@ -923,7 +928,11 @@ public final class AppCiudad {
     }
 
     private void dibujarPlanoPavimento(float x, float y, float z, float sx, float sz, float r, float g, float b, float er, float eg, float eb) {
-        float[] modelo = modelo(x, y, z, sx / 2, 1, sz / 2, 0);
+        dibujarPlano(x, y, z, sx, sz, 0, r, g, b, er, eg, eb);
+    }
+
+    private void dibujarPlano(float x, float y, float z, float sx, float sz, float angulo, float r, float g, float b, float er, float eg, float eb) {
+        float[] modelo = modelo(x, y, z, sx / 2, 1, sz / 2, angulo);
         GL20.glUniformMatrix4fv(uModelo, false, modelo); GL20.glUniform3f(uColor, r, g, b); GL20.glUniform3f(uEmision, er, eg, eb);
         GL30.glBindVertexArray(vaoPlano);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
