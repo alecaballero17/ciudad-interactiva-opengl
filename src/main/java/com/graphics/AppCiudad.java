@@ -19,7 +19,7 @@ public final class AppCiudad {
     private static final int ANCHO = 1280, ALTO = 720;
     private static final int TAMANO_CIUDAD = 11;
     private static final float CELDA = 10.0f, LIMITE = 55.0f;
-    private static final float AUTO_ANCHO = 1.20f, AUTO_LARGO = 2.20f;
+    private static final float AUTO_ANCHO = 1.55f, AUTO_LARGO = 3.65f;
     private static final float VELOCIDAD = 15.0f, GIRO = 115.0f;
     private static final float RADIO_ENTREGA = 3.5f;
     private static final float[][] INTERSECCIONES = {
@@ -350,8 +350,8 @@ public final class AppCiudad {
             float a = tiempo * 0.18f; camX = (float) Math.sin(a) * 92; camZ = (float) Math.cos(a) * 92; camY = 70;
             objetivoX = 0; objetivoY = 0; objetivoZ = 0;
         } else {
-            float r = (float) Math.toRadians(vehiculo.getAngulo()); camX = vehiculo.getX() - (float) Math.sin(r) * 14; camZ = vehiculo.getZ() - (float) Math.cos(r) * 14; camY = 8;
-            objetivoX = vehiculo.getX() + (float) Math.sin(r) * 6; objetivoY = 1.1f; objetivoZ = vehiculo.getZ() + (float) Math.cos(r) * 6;
+            float r = (float) Math.toRadians(vehiculo.getAngulo()); camX = vehiculo.getX() - (float) Math.sin(r) * 17; camZ = vehiculo.getZ() - (float) Math.cos(r) * 17; camY = 9;
+            objetivoX = vehiculo.getX() + (float) Math.sin(r) * 7; objetivoY = 1.35f; objetivoZ = vehiculo.getZ() + (float) Math.cos(r) * 7;
         }
         mirar(vista, camX, camY, camZ, objetivoX, objetivoY, objetivoZ, 0, 1, 0);
         dibujarEscena(tiempo, vista, proyeccion, camX, camY, camZ);
@@ -379,7 +379,7 @@ public final class AppCiudad {
         actualizarFocos(); GL20.glUniform3fv(uFocosPos, posicionFocos); GL20.glUniform3fv(uFocosDir, direccionFocos); GL20.glUniform1i(uFocosActivos, focos ? 1 : 0);
         GL30.glBindVertexArray(vaoCubo);
         dibujarCubo(0, -0.35f, 0, 110, 0.5f, 110, 0, 0.14f, 0.15f, 0.17f, 0, 0, 0);
-        dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo); dibujarAuto();
+        dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo); dibujarMinibus();
         GL30.glBindVertexArray(0); GL20.glUseProgram(0);
     }
 
@@ -408,12 +408,13 @@ public final class AppCiudad {
         float frenteX = (float) Math.sin(r), frenteY = -(float) Math.cos(r);
         float ladoX = (float) Math.cos(r), ladoY = (float) Math.sin(r);
         indice = agregarRutaMapa(vertices, indice, xAuto, yAuto, xDestino, yDestino);
-        // Auto: sombra, carrocería, techo y faros; todos rotan junto con el vehículo.
-        indice = agregarRectOrientado(vertices, indice, xAuto + .008f, yAuto - .008f, frenteX, frenteY, ladoX, ladoY, .050f, .030f, .008f, .012f, .022f);
-        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .047f, .029f, .20f, .66f, .95f);
-        indice = agregarRectOrientado(vertices, indice, xAuto - frenteX * .005f, yAuto - frenteY * .005f, frenteX, frenteY, ladoX, ladoY, .020f, .022f, .82f, .92f, 1.0f);
-        indice = agregarRectOrientado(vertices, indice, xAuto + frenteX * .038f, yAuto + frenteY * .038f, frenteX, frenteY, ladoX, ladoY, .006f, .021f, .95f, .95f, .72f);
-        // Flecha sutil encima del auto para que la orientación sea inequívoca.
+        // Minibús: silueta blanca alargada, franja azul, zócalo rojo y parabrisas oscuro.
+        indice = agregarRectOrientado(vertices, indice, xAuto + .008f, yAuto - .008f, frenteX, frenteY, ladoX, ladoY, .076f, .034f, .008f, .012f, .022f);
+        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .071f, .031f, .88f, .89f, .84f);
+        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .071f, .008f, .04f, .34f, .72f);
+        indice = agregarRectOrientado(vertices, indice, xAuto - frenteX * .040f, yAuto - frenteY * .040f, frenteX, frenteY, ladoX, ladoY, .025f, .024f, .05f, .18f, .29f);
+        indice = agregarRectOrientado(vertices, indice, xAuto + frenteX * .060f, yAuto + frenteY * .060f, frenteX, frenteY, ladoX, ladoY, .007f, .023f, .96f, .94f, .72f);
+        // Flecha sutil encima del minibús para que la orientación sea inequívoca.
         indice = agregarTriangulo(vertices, indice,
                 xAuto + frenteX * .079f, yAuto + frenteY * .079f,
                 xAuto + frenteX * .045f + ladoX * .018f, yAuto + frenteY * .045f + ladoY * .018f,
@@ -689,34 +690,49 @@ public final class AppCiudad {
         dibujarCubo(destinoX + .35f, 3.85f + vaiven, destinoZ - .10f, .34f, .72f, .34f, 0, .92f, .94f, .90f, 0, 0, 0);
     }
 
-    private void dibujarAuto() {
+    private void dibujarMinibus() {
         float r = (float) Math.toRadians(vehiculo.getAngulo());
         float adelanteX = (float) Math.sin(r), adelanteZ = (float) Math.cos(r);
-        // Carrocería: paragolpes, capó, cabina y baúl para una silueta reconocible.
-        dibujarCubo(vehiculo.getX(), .62f, vehiculo.getZ(), 2.45f, .72f, 4.55f, vehiculo.getAngulo(), .83f, .055f, .035f, 0, 0, 0);
-        dibujarCubo(vehiculo.getX() + adelanteX * 1.05f, 1.10f, vehiculo.getZ() + adelanteZ * 1.05f, 2.18f, .42f, 1.62f, vehiculo.getAngulo(), .92f, .075f, .04f, 0, 0, 0);
-        dibujarCubo(vehiculo.getX() - adelanteX * .98f, 1.00f, vehiculo.getZ() - adelanteZ * .98f, 2.24f, .48f, 1.54f, vehiculo.getAngulo(), .70f, .035f, .025f, 0, 0, 0);
-        dibujarCubo(vehiculo.getX() - adelanteX * .08f, 1.45f, vehiculo.getZ() - adelanteZ * .18f, 1.82f, .86f, 2.05f, vehiculo.getAngulo(), .055f, .26f, .39f, .01f, .03f, .05f);
-        // Marcador turquesa sobre el capó: orientación inequívoca en el minimapa.
-        dibujarCubo(vehiculo.getX() + adelanteX * 1.63f, 1.36f, vehiculo.getZ() + adelanteZ * 1.63f, .52f, .10f, .78f, vehiculo.getAngulo(), .08f, .92f, .88f, .02f, .35f, .30f);
-        for (float lateral : new float[]{-1.15f, 1.15f}) for (float frontal : new float[]{-1.45f, 1.45f}) {
+        float ladoX = (float) Math.cos(r), ladoZ = -(float) Math.sin(r);
+        // Carrocería del minibús: blanco, franja azul y zócalo rojo.
+        dibujarCubo(vehiculo.getX(), 1.02f, vehiculo.getZ(), 3.10f, 1.82f, 7.20f, vehiculo.getAngulo(), .88f, .89f, .84f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), 1.18f, vehiculo.getZ(), 3.16f, .28f, 7.26f, vehiculo.getAngulo(), .04f, .34f, .72f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), .52f, vehiculo.getZ(), 3.18f, .26f, 7.28f, vehiculo.getAngulo(), .72f, .06f, .07f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), 2.00f, vehiculo.getZ() - adelanteZ * .08f, 3.00f, .32f, 6.85f, vehiculo.getAngulo(), .05f, .08f, .12f, 0, 0, 0);
+
+        // Parabrisas delantero y rótulo de línea estilizado.
+        float frenteX = vehiculo.getX() + adelanteX * 3.62f, frenteZ = vehiculo.getZ() + adelanteZ * 3.62f;
+        dibujarCubo(frenteX, 1.70f, frenteZ, 2.72f, .82f, .10f, vehiculo.getAngulo(), .06f, .22f, .32f, .01f, .03f, .05f);
+        dibujarCubo(frenteX, 2.20f, frenteZ, 1.22f, .23f, .12f, vehiculo.getAngulo(), .96f, .75f, .14f, .16f, .10f, .01f);
+
+        // Ventanas laterales y puerta de acceso.
+        for (float lateral : new float[]{-1.57f, 1.57f}) for (float longitudinal : new float[]{-2.15f, -1.02f, .12f, 1.26f, 2.35f}) {
+            float x = vehiculo.getX() + ladoX * lateral + adelanteX * longitudinal;
+            float z = vehiculo.getZ() + ladoZ * lateral + adelanteZ * longitudinal;
+            dibujarCubo(x, 1.78f, z, .10f, .72f, .84f, vehiculo.getAngulo(), .05f, .19f, .31f, .01f, .02f, .04f);
+        }
+        float puertaX = vehiculo.getX() + ladoX * -1.58f + adelanteX * 1.62f;
+        float puertaZ = vehiculo.getZ() + ladoZ * -1.58f + adelanteZ * 1.62f;
+        dibujarCubo(puertaX, 1.08f, puertaZ, .12f, 1.50f, 1.05f, vehiculo.getAngulo(), .08f, .11f, .15f, 0, 0, 0);
+
+        for (float lateral : new float[]{-1.58f, 1.58f}) for (float frontal : new float[]{-2.42f, 2.42f}) {
             float wx = vehiculo.getX() + (float) Math.cos(r) * lateral + (float) Math.sin(r) * frontal;
             float wz = vehiculo.getZ() - (float) Math.sin(r) * lateral + (float) Math.cos(r) * frontal;
-            dibujarCubo(wx, .39f, wz, .48f, .62f, .90f, vehiculo.getAngulo(), .025f, .028f, .035f, 0, 0, 0);
-            dibujarCubo(wx, .40f, wz, .18f, .30f, .94f, vehiculo.getAngulo(), .55f, .58f, .61f, 0, 0, 0);
+            dibujarCubo(wx, .42f, wz, .52f, .78f, 1.02f, vehiculo.getAngulo(), .02f, .025f, .03f, 0, 0, 0);
+            dibujarCubo(wx, .42f, wz, .20f, .40f, 1.08f, vehiculo.getAngulo(), .55f, .58f, .61f, 0, 0, 0);
         }
-        float fx = vehiculo.getX() + adelanteX * 2.28f, fz = vehiculo.getZ() + adelanteZ * 2.28f;
-        dibujarCubo(fx + (float)Math.cos(r) * .65f, .82f, fz - (float)Math.sin(r) * .65f, .28f, .25f, .12f, vehiculo.getAngulo(), .9f,.9f,.72f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
-        dibujarCubo(fx - (float)Math.cos(r) * .65f, .82f, fz + (float)Math.sin(r) * .65f, .28f, .25f, .12f, vehiculo.getAngulo(), .9f,.9f,.72f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
+        float fx = vehiculo.getX() + adelanteX * 3.68f, fz = vehiculo.getZ() + adelanteZ * 3.68f;
+        dibujarCubo(fx + ladoX * .86f, .88f, fz + ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
+        dibujarCubo(fx - ladoX * .86f, .88f, fz - ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
     }
 
     private void actualizarFocos() {
         float r = (float) Math.toRadians(vehiculo.getAngulo()), adelanteX = (float) Math.sin(r), adelanteZ = (float) Math.cos(r), ladoX = (float) Math.cos(r), ladoZ = -(float) Math.sin(r);
         for (int i = 0; i < 2; i++) {
-            float lado = i == 0 ? -.68f : .68f;
-            posicionFocos[i * 3] = vehiculo.getX() + adelanteX * 2.2f + ladoX * lado;
-            posicionFocos[i * 3 + 1] = .85f;
-            posicionFocos[i * 3 + 2] = vehiculo.getZ() + adelanteZ * 2.2f + ladoZ * lado;
+            float lado = i == 0 ? -.86f : .86f;
+            posicionFocos[i * 3] = vehiculo.getX() + adelanteX * 3.68f + ladoX * lado;
+            posicionFocos[i * 3 + 1] = .88f;
+            posicionFocos[i * 3 + 2] = vehiculo.getZ() + adelanteZ * 3.68f + ladoZ * lado;
             direccionFocos[i * 3] = adelanteX; direccionFocos[i * 3 + 1] = -.08f; direccionFocos[i * 3 + 2] = adelanteZ;
         }
     }
