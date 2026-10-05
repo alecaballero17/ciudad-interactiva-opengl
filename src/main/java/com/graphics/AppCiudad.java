@@ -42,7 +42,7 @@ public final class AppCiudad {
     };
 
     private long window;
-    private int programa, vaoCubo, vboCubo;
+    private int programa, programaMapa, vaoCubo, vboCubo, vaoMapa, vboMapa;
     private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche, uModoMapa;
     private int uLamparas, uFocosPos, uFocosDir, uFocosActivos;
     private final List<Caja> edificios = new ArrayList<>();
@@ -95,6 +95,7 @@ public final class AppCiudad {
         GL11.glDisable(GL11.GL_CULL_FACE);
         crearShaders();
         crearCuboCompleto();
+        crearMapaUI();
         crearCiudad();
         crearLamparas();
         generarNuevoDestino();
@@ -175,6 +176,35 @@ public final class AppCiudad {
         int shader = GL20.glCreateShader(tipo); GL20.glShaderSource(shader, fuente); GL20.glCompileShader(shader);
         if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) throw new IllegalStateException(GL20.glGetShaderInfoLog(shader));
         return shader;
+    }
+
+    /** Shader sin iluminación para el minimapa: funciona como una interfaz 2D nítida. */
+    private void crearMapaUI() {
+        String vertice = """
+            #version 330 core
+            layout(location=0) in vec2 aPos;
+            layout(location=1) in vec3 aColor;
+            out vec3 vColor;
+            void main() { vColor = aColor; gl_Position = vec4(aPos, 0.0, 1.0); }
+            """;
+        String fragmento = """
+            #version 330 core
+            in vec3 vColor;
+            out vec4 fragColor;
+            void main() { fragColor = vec4(vColor, 1.0); }
+            """;
+        programaMapa = enlazar(vertice, fragmento);
+        vaoMapa = GL30.glGenVertexArrays();
+        vboMapa = GL15.glGenBuffers();
+        GL30.glBindVertexArray(vaoMapa);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboMapa);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, 4096L * Float.BYTES, GL15.GL_DYNAMIC_DRAW);
+        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 5 * Float.BYTES, 0);
+        GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 5 * Float.BYTES, 2L * Float.BYTES);
+        GL20.glEnableVertexAttribArray(0);
+        GL20.glEnableVertexAttribArray(1);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GL30.glBindVertexArray(0);
     }
 
     private void crearCuboCompleto() {
@@ -300,9 +330,7 @@ public final class AppCiudad {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             GL11.glViewport(mapaX, mapaY, lado, lado);
-            ortografica(proyeccionMinimapa, -62, 62, -62, 62, 0.1f, 250);
-            mirar(vistaMinimapa, 0, 122, 0, 0, 0, 0, 0, 0, -1);
-            dibujarMinimapa(tiempo);
+            dibujarMapaUI(tiempo);
             GL11.glViewport(0, 0, ancho[0], alto[0]);
         }
     }
@@ -317,6 +345,73 @@ public final class AppCiudad {
         dibujarCubo(0, -0.35f, 0, 110, 0.5f, 110, 0, 0.14f, 0.15f, 0.17f, 0, 0, 0);
         dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo); dibujarAuto();
         GL30.glBindVertexArray(0); GL20.glUseProgram(0);
+    }
+
+    /** Construye un minimapa 2D contrastado: la ciudad se lee de un vistazo. */
+    private void dibujarMapaUI(float tiempo) {
+        float[] vertices = new float[4096];
+        int indice = 0;
+        // Panel interior y cuadrícula urbana. El eje Z negativo queda arriba (norte).
+        indice = agregarRect(vertices, indice, -.94f, -.94f, .94f, .94f, .025f, .045f, .085f);
+        for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
+            float x = (columna - 5) * CELDA / 62.0f;
+            float y = -((fila - 5) * CELDA) / 62.0f;
+            float mitad = 4.15f / 62.0f;
+            int tipo = CIUDAD[fila][columna];
+            if (tipo == 0) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .17f, .23f, .33f);
+            if (tipo == 1) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .08f, .42f, .72f);
+            if (tipo == 2) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .08f, .56f, .24f);
+        }
+
+        float escala = 1.0f / 62.0f;
+        float xAuto = vehiculo.getX() * escala, yAuto = -vehiculo.getZ() * escala;
+        float r = (float) Math.toRadians(vehiculo.getAngulo());
+        float frenteX = (float) Math.sin(r), frenteY = -(float) Math.cos(r);
+        float ladoX = (float) Math.cos(r), ladoY = (float) Math.sin(r);
+        // Flecha turquesa del jugador: punta, esquina trasera izquierda y derecha.
+        indice = agregarTriangulo(vertices, indice,
+                xAuto + frenteX * .055f, yAuto + frenteY * .055f,
+                xAuto - frenteX * .038f + ladoX * .035f, yAuto - frenteY * .038f + ladoY * .035f,
+                xAuto - frenteX * .038f - ladoX * .035f, yAuto - frenteY * .038f - ladoY * .035f,
+                .10f, .98f, .92f);
+
+        float pulso = .042f + .008f * (float) Math.sin(tiempo * 4.0f);
+        float xDestino = destinoX * escala, yDestino = -destinoZ * escala;
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .96f, .18f, .98f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .96f, .18f, .98f);
+
+        FloatBuffer datos = BufferUtils.createFloatBuffer(indice);
+        datos.put(vertices, 0, indice).flip();
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL20.glUseProgram(programaMapa);
+        GL30.glBindVertexArray(vaoMapa);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboMapa);
+        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, datos);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, indice / 5);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GL30.glBindVertexArray(0);
+        GL20.glUseProgram(0);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+    }
+
+    private int agregarRect(float[] datos, int i, float izquierda, float abajo, float derecha, float arriba, float r, float g, float b) {
+        i = agregarVertice(datos, i, izquierda, abajo, r, g, b);
+        i = agregarVertice(datos, i, derecha, abajo, r, g, b);
+        i = agregarVertice(datos, i, derecha, arriba, r, g, b);
+        i = agregarVertice(datos, i, izquierda, abajo, r, g, b);
+        i = agregarVertice(datos, i, derecha, arriba, r, g, b);
+        return agregarVertice(datos, i, izquierda, arriba, r, g, b);
+    }
+
+    private int agregarTriangulo(float[] datos, int i, float x1, float y1, float x2, float y2, float x3, float y3, float r, float g, float b) {
+        i = agregarVertice(datos, i, x1, y1, r, g, b);
+        i = agregarVertice(datos, i, x2, y2, r, g, b);
+        return agregarVertice(datos, i, x3, y3, r, g, b);
+    }
+
+    private int agregarVertice(float[] datos, int i, float x, float y, float r, float g, float b) {
+        datos[i++] = x; datos[i++] = y; datos[i++] = r; datos[i++] = g; datos[i++] = b;
+        return i;
     }
 
     /** Vista cenital esquemática: prioriza información legible sobre detalle 3D. */
@@ -498,7 +593,9 @@ public final class AppCiudad {
     }
 
     private void liberar() {
-        GL20.glDeleteProgram(programa); GL15.glDeleteBuffers(vboCubo); GL30.glDeleteVertexArrays(vaoCubo);
+        GL20.glDeleteProgram(programa); GL20.glDeleteProgram(programaMapa);
+        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboMapa);
+        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoMapa);
         GLFW.glfwDestroyWindow(window); GLFW.glfwTerminate();
     }
 
