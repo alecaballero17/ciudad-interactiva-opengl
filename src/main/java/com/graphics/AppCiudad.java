@@ -198,7 +198,7 @@ public final class AppCiudad {
         vboMapa = GL15.glGenBuffers();
         GL30.glBindVertexArray(vaoMapa);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboMapa);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, 4096L * Float.BYTES, GL15.GL_DYNAMIC_DRAW);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, 32768L * Float.BYTES, GL15.GL_DYNAMIC_DRAW);
         GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 5 * Float.BYTES, 0);
         GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 5 * Float.BYTES, 2L * Float.BYTES);
         GL20.glEnableVertexAttribArray(0);
@@ -349,36 +349,46 @@ public final class AppCiudad {
 
     /** Construye un minimapa 2D contrastado: la ciudad se lee de un vistazo. */
     private void dibujarMapaUI(float tiempo) {
-        float[] vertices = new float[4096];
+        float[] vertices = new float[32768];
         int indice = 0;
-        // Panel interior y cuadrícula urbana. El eje Z negativo queda arriba (norte).
-        indice = agregarRect(vertices, indice, -.94f, -.94f, .94f, .94f, .025f, .045f, .085f);
+        // Panel con borde: el eje Z negativo queda arriba (norte).
+        indice = agregarRect(vertices, indice, -.97f, -.97f, .97f, .97f, .015f, .025f, .050f);
+        indice = agregarRect(vertices, indice, -.935f, -.935f, .935f, .935f, .040f, .065f, .105f);
         for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
             float x = (columna - 5) * CELDA / 62.0f;
             float y = -((fila - 5) * CELDA) / 62.0f;
             float mitad = 4.15f / 62.0f;
             int tipo = CIUDAD[fila][columna];
-            if (tipo == 0) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .17f, .23f, .33f);
-            if (tipo == 1) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .08f, .42f, .72f);
-            if (tipo == 2) indice = agregarRect(vertices, indice, x - mitad, y - mitad, x + mitad, y + mitad, .08f, .56f, .24f);
+            if (tipo == 0) indice = agregarCalleMapa(vertices, indice, x, y, mitad, columna);
+            if (tipo == 1) indice = agregarEdificioMapa(vertices, indice, x, y, mitad, fila, columna);
+            if (tipo == 2) indice = agregarParqueMapa(vertices, indice, x, y, mitad, fila, columna);
         }
 
         float escala = 1.0f / 62.0f;
         float xAuto = vehiculo.getX() * escala, yAuto = -vehiculo.getZ() * escala;
+        float xDestino = destinoX * escala, yDestino = -destinoZ * escala;
         float r = (float) Math.toRadians(vehiculo.getAngulo());
         float frenteX = (float) Math.sin(r), frenteY = -(float) Math.cos(r);
         float ladoX = (float) Math.cos(r), ladoY = (float) Math.sin(r);
-        // Flecha turquesa del jugador: punta, esquina trasera izquierda y derecha.
+        indice = agregarRutaMapa(vertices, indice, xAuto, yAuto, xDestino, yDestino);
+        // Auto: sombra, carrocería, techo y faros; todos rotan junto con el vehículo.
+        indice = agregarRectOrientado(vertices, indice, xAuto + .008f, yAuto - .008f, frenteX, frenteY, ladoX, ladoY, .050f, .030f, .008f, .012f, .022f);
+        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .047f, .029f, .08f, .84f, .89f);
+        indice = agregarRectOrientado(vertices, indice, xAuto - frenteX * .005f, yAuto - frenteY * .005f, frenteX, frenteY, ladoX, ladoY, .020f, .022f, .08f, .32f, .50f);
+        indice = agregarRectOrientado(vertices, indice, xAuto + frenteX * .038f, yAuto + frenteY * .038f, frenteX, frenteY, ladoX, ladoY, .006f, .021f, .95f, .95f, .72f);
+        // Flecha sutil encima del auto para que la orientación sea inequívoca.
         indice = agregarTriangulo(vertices, indice,
-                xAuto + frenteX * .055f, yAuto + frenteY * .055f,
-                xAuto - frenteX * .038f + ladoX * .035f, yAuto - frenteY * .038f + ladoY * .035f,
-                xAuto - frenteX * .038f - ladoX * .035f, yAuto - frenteY * .038f - ladoY * .035f,
-                .10f, .98f, .92f);
+                xAuto + frenteX * .079f, yAuto + frenteY * .079f,
+                xAuto + frenteX * .045f + ladoX * .018f, yAuto + frenteY * .045f + ladoY * .018f,
+                xAuto + frenteX * .045f - ladoX * .018f, yAuto + frenteY * .045f - ladoY * .018f,
+                .95f, .98f, 1.0f);
 
         float pulso = .042f + .008f * (float) Math.sin(tiempo * 4.0f);
-        float xDestino = destinoX * escala, yDestino = -destinoZ * escala;
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .96f, .18f, .98f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .96f, .18f, .98f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .55f, .05f, .70f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .55f, .05f, .70f);
+        float nucleo = pulso * .52f;
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, 1.0f, .28f, .93f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, 1.0f, .28f, .93f);
 
         FloatBuffer datos = BufferUtils.createFloatBuffer(indice);
         datos.put(vertices, 0, indice).flip();
@@ -401,6 +411,60 @@ public final class AppCiudad {
         i = agregarVertice(datos, i, izquierda, abajo, r, g, b);
         i = agregarVertice(datos, i, derecha, arriba, r, g, b);
         return agregarVertice(datos, i, izquierda, arriba, r, g, b);
+    }
+
+    private int agregarCalleMapa(float[] datos, int i, float x, float y, float mitad, int columna) {
+        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .095f, .115f, .155f);
+        float borde = mitad * .82f;
+        i = agregarRect(datos, i, x - borde, y - borde, x + borde, y + borde, .155f, .185f, .235f);
+        boolean vertical = columna == 3 || columna == 5 || columna == 9;
+        for (float d = -mitad * .55f; d <= mitad * .55f; d += mitad * .55f) {
+            if (vertical) i = agregarRect(datos, i, x - .006f, y + d - .018f, x + .006f, y + d + .018f, .95f, .70f, .20f);
+            else i = agregarRect(datos, i, x + d - .018f, y - .006f, x + d + .018f, y + .006f, .95f, .70f, .20f);
+        }
+        return i;
+    }
+
+    private int agregarEdificioMapa(float[] datos, int i, float x, float y, float mitad, int fila, int columna) {
+        float tono = .34f + ((fila + columna) % 3) * .06f;
+        float sesgoX = ((fila * 3 + columna) % 2 == 0) ? -.009f : .009f;
+        float sesgoY = ((fila + columna * 2) % 2 == 0) ? .007f : -.007f;
+        i = agregarRect(datos, i, x - mitad + .010f, y - mitad - .010f, x + mitad + .010f, y + mitad - .010f, .018f, .035f, .070f);
+        i = agregarRect(datos, i, x - mitad * .83f + sesgoX, y - mitad * .83f + sesgoY, x + mitad * .83f + sesgoX, y + mitad * .83f + sesgoY, .055f, tono * .76f, tono);
+        i = agregarRect(datos, i, x - mitad * .58f + sesgoX, y - mitad * .58f + sesgoY, x + mitad * .58f + sesgoX, y + mitad * .58f + sesgoY, .12f, tono, Math.min(.92f, tono + .18f));
+        // Azotea y detalles de fachada: generan volumen sin saturar el panel.
+        i = agregarRect(datos, i, x - mitad * .64f + sesgoX, y + mitad * .38f + sesgoY, x + mitad * .64f + sesgoX, y + mitad * .53f + sesgoY, .25f, .72f, .90f);
+        return agregarRect(datos, i, x - mitad * .14f + sesgoX, y - mitad * .42f + sesgoY, x + mitad * .14f + sesgoX, y + mitad * .28f + sesgoY, .07f, .25f, .42f);
+    }
+
+    private int agregarParqueMapa(float[] datos, int i, float x, float y, float mitad, int fila, int columna) {
+        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .025f, .16f, .07f);
+        i = agregarRect(datos, i, x - mitad * .82f, y - mitad * .82f, x + mitad * .82f, y + mitad * .82f, .08f, .42f, .16f);
+        float variacion = ((fila + columna) % 2 == 0) ? .018f : -.018f;
+        i = agregarRect(datos, i, x - .042f + variacion, y + .005f, x - .006f + variacion, y + .041f, .42f, .84f, .20f);
+        i = agregarRect(datos, i, x + .014f - variacion, y - .043f, x + .050f - variacion, y - .007f, .42f, .84f, .20f);
+        return agregarRect(datos, i, x - .018f, y - .013f, x + .018f, y + .013f, .72f, .52f, .20f);
+    }
+
+    private int agregarRutaMapa(float[] datos, int i, float x1, float y1, float x2, float y2) {
+        float dx = x2 - x1, dy = y2 - y1;
+        float distancia = (float) Math.sqrt(dx * dx + dy * dy);
+        if (distancia < .01f) return i;
+        float frenteX = dx / distancia, frenteY = dy / distancia;
+        float ladoX = -frenteY, ladoY = frenteX;
+        for (float t = .11f; t < .90f; t += .11f) {
+            i = agregarRectOrientado(datos, i, x1 + dx * t, y1 + dy * t, frenteX, frenteY, ladoX, ladoY, .015f, .006f, .75f, .25f, .88f);
+        }
+        return i;
+    }
+
+    private int agregarRectOrientado(float[] datos, int i, float x, float y, float frenteX, float frenteY, float ladoX, float ladoY, float medioLargo, float medioAncho, float r, float g, float b) {
+        float x1 = x - frenteX * medioLargo - ladoX * medioAncho, y1 = y - frenteY * medioLargo - ladoY * medioAncho;
+        float x2 = x + frenteX * medioLargo - ladoX * medioAncho, y2 = y + frenteY * medioLargo - ladoY * medioAncho;
+        float x3 = x + frenteX * medioLargo + ladoX * medioAncho, y3 = y + frenteY * medioLargo + ladoY * medioAncho;
+        float x4 = x - frenteX * medioLargo + ladoX * medioAncho, y4 = y - frenteY * medioLargo + ladoY * medioAncho;
+        i = agregarTriangulo(datos, i, x1, y1, x2, y2, x3, y3, r, g, b);
+        return agregarTriangulo(datos, i, x1, y1, x3, y3, x4, y4, r, g, b);
     }
 
     private int agregarTriangulo(float[] datos, int i, float x1, float y1, float x2, float y2, float x3, float y3, float r, float g, float b) {
