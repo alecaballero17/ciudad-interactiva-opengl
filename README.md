@@ -140,7 +140,8 @@ ciudad-interactiva-opengl/
 ├── assets/
 │   └── ciudad-interactiva-hero.png   # Ilustración de portada
 ├── src/main/java/com/graphics/
-│   └── AppCiudad.java                # Aplicación completa
+│   ├── AppCiudad.java                # Ciudad, render, luces y misiones
+│   └── Vehiculo.java                 # Estado y movimiento del automóvil
 ├── .gitignore
 ├── pom.xml
 └── README.md
