@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/ciudad-interactiva-hero.png" alt="Vista nocturna ilustrada de Ciudad Interactiva OpenGL" width="100%">
+  <img src="assets/ciudad-santa-cruz-hero.png" alt="Vista ilustrada de Ciudad Interactiva OpenGL inspirada en Santa Cruz de la Sierra" width="100%">
 </p>
 
 <h1 align="center">🌃 Ciudad Interactiva OpenGL</h1>
