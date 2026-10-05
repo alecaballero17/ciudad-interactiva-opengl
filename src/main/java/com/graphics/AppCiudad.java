@@ -2,6 +2,7 @@ package com.graphics;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -458,8 +459,6 @@ public final class AppCiudad {
         float nucleo = pulso * .52f;
         indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, .98f, .68f, .08f);
         indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, .98f, .68f, .08f);
-        indice = agregarNorteMapa(vertices, indice);
-
         FloatBuffer datos = BufferUtils.createFloatBuffer(indice);
         datos.put(vertices, 0, indice).flip();
         GL11.glDisable(GL11.GL_DEPTH_TEST);
@@ -518,15 +517,61 @@ public final class AppCiudad {
     }
 
     private int agregarRutaMapa(float[] datos, int i, float x1, float y1, float x2, float y2) {
-        float dx = x2 - x1, dy = y2 - y1;
-        float distancia = (float) Math.sqrt(dx * dx + dy * dy);
-        if (distancia < .01f) return i;
-        float frenteX = dx / distancia, frenteY = dy / distancia;
-        float ladoX = -frenteY, ladoY = frenteX;
-        for (float t = .11f; t < .90f; t += .11f) {
-            i = agregarRectOrientado(datos, i, x1 + dx * t, y1 + dy * t, frenteX, frenteY, ladoX, ladoY, .015f, .006f, .94f, .20f, .72f);
+        int inicio = calleMasCercana(vehiculo.getX(), vehiculo.getZ());
+        int destino = calleMasCercana(destinoX, destinoZ);
+        int[] anterior = new int[TAMANO_CIUDAD * TAMANO_CIUDAD];
+        Arrays.fill(anterior, -2);
+        int[] cola = new int[anterior.length];
+        int primero = 0, ultimo = 0;
+        cola[ultimo++] = inicio; anterior[inicio] = -1;
+        while (primero < ultimo && anterior[destino] == -2) {
+            int actual = cola[primero++], fila = actual / TAMANO_CIUDAD, columna = actual % TAMANO_CIUDAD;
+            for (int[] paso : new int[][]{{-1,0}, {1,0}, {0,-1}, {0,1}}) {
+                int nuevaFila = fila + paso[0], nuevaColumna = columna + paso[1];
+                if (nuevaFila < 0 || nuevaFila >= TAMANO_CIUDAD || nuevaColumna < 0 || nuevaColumna >= TAMANO_CIUDAD) continue;
+                int vecino = nuevaFila * TAMANO_CIUDAD + nuevaColumna;
+                if (CIUDAD[nuevaFila][nuevaColumna] == 0 && anterior[vecino] == -2) {
+                    anterior[vecino] = actual;
+                    cola[ultimo++] = vecino;
+                }
+            }
         }
+        if (anterior[destino] == -2) return agregarSegmentoRutaMapa(datos, i, x1, y1, x2, y2);
+
+        List<Integer> camino = new ArrayList<>();
+        for (int nodo = destino; nodo != -1; nodo = anterior[nodo]) camino.add(nodo);
+        float previoX = x1, previoY = y1;
+        for (int p = camino.size() - 1; p >= 0; p--) {
+            int nodo = camino.get(p), fila = nodo / TAMANO_CIUDAD, columna = nodo % TAMANO_CIUDAD;
+            float puntoX = (columna - 5) * CELDA / 62.0f;
+            float puntoY = -((fila - 5) * CELDA) / 62.0f;
+            i = agregarSegmentoRutaMapa(datos, i, previoX, previoY, puntoX, puntoY);
+            previoX = puntoX; previoY = puntoY;
+        }
+        i = agregarSegmentoRutaMapa(datos, i, previoX, previoY, x2, y2);
         return i;
+    }
+
+    /** Índice de la calle más cercana, usado para anclar la navegación a la red vial. */
+    private int calleMasCercana(float x, float z) {
+        int mejor = 0; float distanciaMinima = Float.MAX_VALUE;
+        for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
+            if (CIUDAD[fila][columna] != 0) continue;
+            float calleX = (columna - 5) * CELDA, calleZ = (fila - 5) * CELDA;
+            float dx = x - calleX, dz = z - calleZ, distancia = dx * dx + dz * dz;
+            if (distancia < distanciaMinima) { distanciaMinima = distancia; mejor = fila * TAMANO_CIUDAD + columna; }
+        }
+        return mejor;
+    }
+
+    /** Segmento amarillo con borde oscuro para conservar legibilidad sobre el mapa. */
+    private int agregarSegmentoRutaMapa(float[] datos, int i, float x1, float y1, float x2, float y2) {
+        float dx = x2 - x1, dy = y2 - y1, distancia = (float) Math.sqrt(dx * dx + dy * dy);
+        if (distancia < .004f) return i;
+        float frenteX = dx / distancia, frenteY = dy / distancia, ladoX = -frenteY, ladoY = frenteX;
+        float centroX = (x1 + x2) * .5f, centroY = (y1 + y2) * .5f;
+        i = agregarRectOrientado(datos, i, centroX, centroY, frenteX, frenteY, ladoX, ladoY, distancia * .5f, .019f, .13f, .10f, .025f);
+        return agregarRectOrientado(datos, i, centroX, centroY, frenteX, frenteY, ladoX, ladoY, distancia * .5f, .012f, .98f, .72f, .08f);
     }
 
     private int agregarRectOrientado(float[] datos, int i, float x, float y, float frenteX, float frenteY, float ladoX, float ladoY, float medioLargo, float medioAncho, float r, float g, float b) {
@@ -550,16 +595,6 @@ public final class AppCiudad {
         i = agregarRect(datos, i, -.935f, -.924f, .935f, -.910f, blanco, blanco, blanco);
         i = agregarRect(datos, i, -.924f, -.910f, -.910f, .910f, blanco, blanco, blanco);
         return agregarRect(datos, i, .910f, -.910f, .924f, .910f, blanco, blanco, blanco);
-    }
-
-    /** Insignia N construida con rectángulos, sin necesidad de una fuente o textura. */
-    private int agregarNorteMapa(float[] datos, int i) {
-        i = agregarRect(datos, i, -.105f, .815f, .105f, .940f, .015f, .014f, .020f);
-        float blanco = .96f;
-        i = agregarRect(datos, i, -.062f, .838f, -.045f, .914f, blanco, blanco, blanco);
-        i = agregarRect(datos, i, .045f, .838f, .062f, .914f, blanco, blanco, blanco);
-        i = agregarRectOrientado(datos, i, -.014f, .876f, .707f, .707f, -.707f, .707f, .052f, .009f, blanco, blanco, blanco);
-        return agregarRectOrientado(datos, i, .014f, .876f, .707f, .707f, -.707f, .707f, .052f, .009f, blanco, blanco, blanco);
     }
 
     private int agregarTriangulo(float[] datos, int i, float x1, float y1, float x2, float y2, float x3, float y3, float r, float g, float b) {
