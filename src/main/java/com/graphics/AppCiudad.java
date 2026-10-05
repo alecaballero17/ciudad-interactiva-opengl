@@ -590,13 +590,19 @@ public final class AppCiudad {
             float x = (columna - 5) * CELDA, z = (fila - 5) * CELDA;
             int tipo = CIUDAD[fila][columna];
             if (tipo == 0) {
-                dibujarCubo(x, -0.05f, z, 9.8f, 0.12f, 9.8f, 0, 0.20f, 0.23f, 0.28f, 0, 0, 0);
+                // Asfalto cálido y claro, inspirado en las calles soleadas del centro cruceño.
+                dibujarCubo(x, -0.05f, z, 9.8f, 0.12f, 9.8f, 0, 0.34f, 0.32f, 0.28f, 0, 0, 0);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
+                if (fila == 4 && columna == 4) {
+                    dibujarCatedralCruceña(x, z);
+                    continue;
+                }
                 float alto = 9 + ((fila * 7 + columna * 5) % 4) * 4;
-                float r = 0.22f + (columna % 3) * .06f, g = .25f + (fila % 3) * .05f;
-                dibujarCubo(x, alto / 2, z, 8.5f, alto, 8.5f, 0, r, g, 0.34f, 0, 0, 0);
-                dibujarCubo(x, alto + .25f, z, 8.7f, .5f, 8.7f, 0, .16f, .18f, .22f, 0, 0, 0);
+                float[][] fachadas = {{.60f, .31f, .18f}, {.77f, .66f, .48f}, {.72f, .70f, .62f}, {.49f, .28f, .20f}};
+                float[] color = fachadas[(fila * 3 + columna) % fachadas.length];
+                dibujarCubo(x, alto / 2, z, 8.5f, alto, 8.5f, 0, color[0], color[1], color[2], 0, 0, 0);
+                dibujarCubo(x, alto + .25f, z, 8.7f, .5f, 8.7f, 0, .31f, .20f, .14f, 0, 0, 0);
                 dibujarVentanasEdificio(x, z, alto);
             } else {
                 dibujarCubo(x, -0.02f, z, 9.4f, .18f, 9.4f, 0, .08f, .28f, .10f, 0, 0, 0);
@@ -605,13 +611,32 @@ public final class AppCiudad {
                 } else if (fila == 4 && columna == 0) {
                     dibujarPlazaBanderas(x, z);
                 } else {
-                    dibujarArbol(x - 2.5f, z - 1.6f, 1.0f);
-                    dibujarArbol(x + 2.3f, z + 1.7f, .8f);
+                    dibujarPalmera(x - 2.5f, z - 1.6f, 1.0f);
+                    dibujarPalmera(x + 2.3f, z + 1.7f, .8f);
                     dibujarBanco(x - 1.5f, z + 3.2f, 0);
                     dibujarBanco(x + 3.1f, z - 2.8f, 90);
                 }
             }
         }
+    }
+
+    /** Catedral original de ladrillo y torres, inspirada en rasgos coloniales cruceños. */
+    private void dibujarCatedralCruceña(float x, float z) {
+        float ladrilloR = .61f, ladrilloG = .30f, ladrilloB = .16f;
+        dibujarCubo(x, .24f, z, 8.70f, .48f, 8.70f, 0, .50f, .43f, .34f, 0, 0, 0);
+        dibujarCubo(x, 4.15f, z, 3.95f, 7.85f, 5.90f, 0, ladrilloR, ladrilloG, ladrilloB, 0, 0, 0);
+        for (float lateral : new float[]{-3.05f, 3.05f}) {
+            dibujarCubo(x + lateral, 5.55f, z, 1.72f, 10.70f, 2.30f, 0, .57f, .27f, .14f, 0, 0, 0);
+            dibujarCubo(x + lateral, 10.98f, z, 2.05f, .42f, 2.62f, 0, .42f, .20f, .12f, 0, 0, 0);
+            dibujarCubo(x + lateral, 11.38f, z, .88f, .62f, .88f, 0, .76f, .49f, .24f, .04f, .02f, 0);
+            dibujarCubo(x + lateral, 7.10f, z - 1.20f, .78f, 2.05f, .12f, 0, .08f, .10f, .12f, 0, 0, 0);
+        }
+        // Portada, arco central y un rosetón que reconocen la fachada desde la avenida.
+        dibujarCubo(x, 1.70f, z - 3.02f, 1.48f, 3.00f, .16f, 0, .12f, .095f, .075f, 0, 0, 0);
+        dibujarCubo(x, 4.70f, z - 3.04f, 1.56f, 1.75f, .15f, 0, .09f, .11f, .13f, 0, 0, 0);
+        dibujarEsfera(x, 6.42f, z - 3.13f, .62f, .62f, .13f, .90f, .78f, .54f, .05f, .03f, .01f);
+        dibujarCubo(x, 8.32f, z, 4.55f, .38f, 6.38f, 0, .49f, .22f, .13f, 0, 0, 0);
+        dibujarCubo(x, 8.72f, z, 1.55f, .68f, 3.05f, 0, .64f, .32f, .17f, 0, 0, 0);
     }
 
     /** Plaza monumental original inspirada en el Cristo cruceño, construida solo con geometría propia. */
@@ -676,19 +701,26 @@ public final class AppCiudad {
         float brillo = noche ? .92f : .08f;
         for (float y = 2.1f; y < alto - 1; y += 3.2f) {
             for (float desplazamiento : new float[]{-2.65f, 0, 2.65f}) {
-                dibujarCubo(x + desplazamiento, y, z + 4.28f, 1.25f, 1.15f, .08f, 0, .20f, .52f, .72f, brillo * .32f, brillo * .72f, brillo);
-                dibujarCubo(x + desplazamiento, y, z - 4.28f, 1.25f, 1.15f, .08f, 0, .20f, .52f, .72f, brillo * .32f, brillo * .72f, brillo);
-                dibujarCubo(x + 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .20f, .52f, .72f, brillo * .32f, brillo * .72f, brillo);
-                dibujarCubo(x - 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .20f, .52f, .72f, brillo * .32f, brillo * .72f, brillo);
+                dibujarCubo(x + desplazamiento, y, z + 4.28f, 1.25f, 1.15f, .08f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
+                dibujarCubo(x + desplazamiento, y, z - 4.28f, 1.25f, 1.15f, .08f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
+                dibujarCubo(x + 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
+                dibujarCubo(x - 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
             }
         }
     }
 
-    private void dibujarArbol(float x, float z, float escala) {
-        dibujarCubo(x, 1.5f * escala, z, .65f * escala, 3.0f * escala, .65f * escala, 0, .30f, .16f, .055f, 0, 0, 0);
-        dibujarCubo(x, 3.5f * escala, z, 2.7f * escala, 2.0f * escala, 2.7f * escala, 0, .035f, .32f, .07f, 0, 0, 0);
-        dibujarCubo(x + .7f * escala, 4.2f * escala, z, 1.9f * escala, 1.5f * escala, 1.9f * escala, 0, .04f, .42f, .09f, 0, 0, 0);
-        dibujarCubo(x - .6f * escala, 4.0f * escala, z + .5f * escala, 1.8f * escala, 1.4f * escala, 1.8f * escala, 0, .03f, .37f, .08f, 0, 0, 0);
+    /** Palmera tropical con tronco segmentado y frondas radiales. */
+    private void dibujarPalmera(float x, float z, float escala) {
+        float troncoR = .34f, troncoG = .22f, troncoB = .11f;
+        dibujarCubo(x, 1.65f * escala, z, .46f * escala, 3.30f * escala, .46f * escala, 0, troncoR, troncoG, troncoB, 0, 0, 0);
+        dibujarCubo(x + .13f * escala, 3.48f * escala, z, .38f * escala, .58f * escala, .38f * escala, 0, .38f, .25f, .12f, 0, 0, 0);
+        float copaY = 4.10f * escala;
+        dibujarCubo(x + 1.25f * escala, copaY, z, 2.75f * escala, .18f * escala, .58f * escala, 0, .025f, .34f, .10f, 0, 0, 0);
+        dibujarCubo(x - 1.25f * escala, copaY + .05f * escala, z, 2.75f * escala, .18f * escala, .58f * escala, 0, .03f, .42f, .12f, 0, 0, 0);
+        dibujarCubo(x, copaY + .10f * escala, z + 1.25f * escala, .58f * escala, .18f * escala, 2.75f * escala, 0, .025f, .38f, .10f, 0, 0, 0);
+        dibujarCubo(x, copaY + .02f * escala, z - 1.25f * escala, .58f * escala, .18f * escala, 2.75f * escala, 0, .03f, .45f, .12f, 0, 0, 0);
+        dibujarCubo(x + .85f * escala, copaY + .20f * escala, z + .85f * escala, 2.10f * escala, .15f * escala, .48f * escala, 45, .05f, .32f, .09f, 0, 0, 0);
+        dibujarCubo(x - .85f * escala, copaY + .16f * escala, z - .85f * escala, 2.10f * escala, .15f * escala, .48f * escala, 45, .04f, .40f, .10f, 0, 0, 0);
     }
 
     private void dibujarBanco(float x, float z, float angulo) {
