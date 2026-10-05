@@ -635,7 +635,7 @@ public final class AppCiudad {
                 dibujarCubo(x, -0.02f, z, 9.4f, .18f, 9.4f, 0, .08f, .28f, .10f, 0, 0, 0);
                 if (fila == 1 && columna == 4) {
                     dibujarPlazaCristo(x, z);
-                } else if (fila == 4 && columna == 0) {
+                } else if ((fila == 4 && columna == 0) || (fila == 7 && columna == 7)) {
                     dibujarPlazaBanderas(x, z);
                 } else {
                     dibujarArbol(x - 2.5f, z - 1.6f, 1.0f);
@@ -690,6 +690,9 @@ public final class AppCiudad {
         dibujarCubo(x + 1.68f, 5.55f, z, .34f, .65f, .54f, 0, .26f, .33f, .32f, 0, 0, 0);
         dibujarEsfera(x - 1.68f, 6.00f, z, .20f, .27f, .20f, .42f, .44f, .40f, 0, 0, 0);
         dibujarEsfera(x + 1.68f, 6.00f, z, .20f, .27f, .20f, .42f, .44f, .40f, 0, 0, 0);
+        // Banderas laterales que acompañan el monumento sin ocultar su silueta.
+        dibujarBanderaCruceña(x - 3.25f, z - 2.45f, 4.80f, .58f);
+        dibujarBanderaCruceña(x + 3.25f, z + 2.45f, 4.80f, .58f);
         dibujarBanco(x - 3.15f, z + 3.15f, 0);
         dibujarBanco(x + 3.15f, z - 3.15f, 180);
     }
@@ -786,8 +789,8 @@ public final class AppCiudad {
             dibujarCubo(x, 2.2f, z, .18f, 4.4f, .18f, 0, .09f, .09f, .10f, 0, 0, 0);
             dibujarCubo(x, 4.0f, z, .72f, 1.95f, .52f, 0, .06f, .065f, .07f, 0, 0, 0);
             dibujarLuzSemaforo(x, 4.6f, z + .29f, .92f, .04f, .03f, luzActiva == 0);
-            dibujarLuzSemaforo(x, 4.0f, z + .29f, .04f, .88f, .12f, luzActiva == 1);
-            dibujarLuzSemaforo(x, 3.4f, z + .29f, .95f, .63f, .03f, luzActiva == 2);
+            dibujarLuzSemaforo(x, 4.0f, z + .29f, .95f, .63f, .03f, luzActiva == 2);
+            dibujarLuzSemaforo(x, 3.4f, z + .29f, .04f, .88f, .12f, luzActiva == 1);
         }
     }
 
