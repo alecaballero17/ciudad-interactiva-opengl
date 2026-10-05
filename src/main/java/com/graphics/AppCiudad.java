@@ -275,7 +275,8 @@ public final class AppCiudad {
     private void crearLamparas() {
         int k = 0;
         for (float z : new float[]{-30, 0, 30}) for (float x : new float[]{-30, 0, 30}) {
-            posicionLamparas[k++] = x; posicionLamparas[k++] = 7.0f; posicionLamparas[k++] = z;
+            // Se ubican junto a la acera, nunca en el centro del carril.
+            posicionLamparas[k++] = x + 4.25f; posicionLamparas[k++] = 7.0f; posicionLamparas[k++] = z + 4.25f;
         }
     }
 
@@ -597,8 +598,9 @@ public final class AppCiudad {
             float x = (columna - 5) * CELDA, z = (fila - 5) * CELDA;
             int tipo = CIUDAD[fila][columna];
             if (tipo == 0) {
-                // Asfalto cálido y claro, inspirado en las calles soleadas del centro cruceño.
-                dibujarCubo(x, -0.05f, z, 9.8f, 0.12f, 9.8f, 0, 0.34f, 0.32f, 0.28f, 0, 0, 0);
+                // Acera clara alrededor de una calzada de asfalto oscuro.
+                dibujarCubo(x, -0.04f, z, 9.82f, .13f, 9.82f, 0, .56f, .53f, .46f, 0, 0, 0);
+                dibujarCubo(x, .035f, z, 8.92f, .055f, 8.92f, 0, .12f, .13f, .13f, 0, 0, 0);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
                 if (fila == 4 && columna == 4) {
@@ -618,8 +620,8 @@ public final class AppCiudad {
                 } else if (fila == 4 && columna == 0) {
                     dibujarPlazaBanderas(x, z);
                 } else {
-                    dibujarPalmera(x - 2.5f, z - 1.6f, 1.0f);
-                    dibujarPalmera(x + 2.3f, z + 1.7f, .8f);
+                    dibujarArbol(x - 2.5f, z - 1.6f, 1.0f);
+                    dibujarArbol(x + 2.3f, z + 1.7f, .8f);
                     dibujarBanco(x - 1.5f, z + 3.2f, 0);
                     dibujarBanco(x + 3.1f, z - 2.8f, 90);
                 }
@@ -716,18 +718,12 @@ public final class AppCiudad {
         }
     }
 
-    /** Palmera tropical con tronco segmentado y frondas radiales. */
-    private void dibujarPalmera(float x, float z, float escala) {
-        float troncoR = .34f, troncoG = .22f, troncoB = .11f;
-        dibujarCubo(x, 1.65f * escala, z, .46f * escala, 3.30f * escala, .46f * escala, 0, troncoR, troncoG, troncoB, 0, 0, 0);
-        dibujarCubo(x + .13f * escala, 3.48f * escala, z, .38f * escala, .58f * escala, .38f * escala, 0, .38f, .25f, .12f, 0, 0, 0);
-        float copaY = 4.10f * escala;
-        dibujarCubo(x + 1.25f * escala, copaY, z, 2.75f * escala, .18f * escala, .58f * escala, 0, .025f, .34f, .10f, 0, 0, 0);
-        dibujarCubo(x - 1.25f * escala, copaY + .05f * escala, z, 2.75f * escala, .18f * escala, .58f * escala, 0, .03f, .42f, .12f, 0, 0, 0);
-        dibujarCubo(x, copaY + .10f * escala, z + 1.25f * escala, .58f * escala, .18f * escala, 2.75f * escala, 0, .025f, .38f, .10f, 0, 0, 0);
-        dibujarCubo(x, copaY + .02f * escala, z - 1.25f * escala, .58f * escala, .18f * escala, 2.75f * escala, 0, .03f, .45f, .12f, 0, 0, 0);
-        dibujarCubo(x + .85f * escala, copaY + .20f * escala, z + .85f * escala, 2.10f * escala, .15f * escala, .48f * escala, 45, .05f, .32f, .09f, 0, 0, 0);
-        dibujarCubo(x - .85f * escala, copaY + .16f * escala, z - .85f * escala, 2.10f * escala, .15f * escala, .48f * escala, 45, .04f, .40f, .10f, 0, 0, 0);
+    /** Árbol urbano de copas compuestas, más legible que las palmeras a esta escala. */
+    private void dibujarArbol(float x, float z, float escala) {
+        dibujarCubo(x, 1.5f * escala, z, .65f * escala, 3.0f * escala, .65f * escala, 0, .30f, .16f, .055f, 0, 0, 0);
+        dibujarCubo(x, 3.5f * escala, z, 2.7f * escala, 2.0f * escala, 2.7f * escala, 0, .035f, .32f, .07f, 0, 0, 0);
+        dibujarCubo(x + .7f * escala, 4.2f * escala, z, 1.9f * escala, 1.5f * escala, 1.9f * escala, 0, .04f, .42f, .09f, 0, 0, 0);
+        dibujarCubo(x - .6f * escala, 4.0f * escala, z + .5f * escala, 1.8f * escala, 1.4f * escala, 1.8f * escala, 0, .03f, .37f, .08f, 0, 0, 0);
     }
 
     private void dibujarBanco(float x, float z, float angulo) {
@@ -760,7 +756,8 @@ public final class AppCiudad {
         float fase = tiempo % 9.0f;
         int luzActiva = fase < 4.0f ? 0 : (fase < 7.0f ? 1 : 2); // rojo, verde, amarillo
         for (float[] esquina : INTERSECCIONES) {
-            float x = esquina[0] + 2.7f, z = esquina[1] + 2.7f;
+            // Cada semáforo se apoya en la esquina de la acera del cruce.
+            float x = esquina[0] + 4.15f, z = esquina[1] + 4.15f;
             dibujarCubo(x, 2.2f, z, .18f, 4.4f, .18f, 0, .09f, .09f, .10f, 0, 0, 0);
             dibujarCubo(x, 4.0f, z, .72f, 1.95f, .52f, 0, .06f, .065f, .07f, 0, 0, 0);
             dibujarLuzSemaforo(x, 4.6f, z + .29f, .92f, .04f, .03f, luzActiva == 0);

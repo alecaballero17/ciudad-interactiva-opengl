@@ -106,7 +106,7 @@ mvn exec:java
 | Árboles con troncos y copas compuestas de cubos; bancos de madera. | Fachadas variables, techos y ventanas brillantes al anochecer. | Pasos peatonales y semáforos con ciclo rojo → verde → amarillo. |
 
 - **Identidad cruceña:** una plaza monumental con una estatua original inspirada en el Cristo y otra plaza cívica con banderas verde, blanco y verde.
-- **Paleta local:** fachadas de ladrillo terracota, crema y estilo colonial; palmeras tropicales y una catedral original como hito visual.
+- **Paleta local:** fachadas de ladrillo terracota, crema y estilo colonial; árboles urbanos y una catedral original como hito visual.
 
 ### 🗺️ Minimapa y misiones
 
