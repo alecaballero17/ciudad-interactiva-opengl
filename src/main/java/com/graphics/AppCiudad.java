@@ -587,12 +587,64 @@ public final class AppCiudad {
                 dibujarVentanasEdificio(x, z, alto);
             } else {
                 dibujarCubo(x, -0.02f, z, 9.4f, .18f, 9.4f, 0, .08f, .28f, .10f, 0, 0, 0);
-                dibujarArbol(x - 2.5f, z - 1.6f, 1.0f);
-                dibujarArbol(x + 2.3f, z + 1.7f, .8f);
-                dibujarBanco(x - 1.5f, z + 3.2f, 0);
-                dibujarBanco(x + 3.1f, z - 2.8f, 90);
+                if (fila == 1 && columna == 4) {
+                    dibujarPlazaCristo(x, z);
+                } else if (fila == 4 && columna == 0) {
+                    dibujarPlazaBanderas(x, z);
+                } else {
+                    dibujarArbol(x - 2.5f, z - 1.6f, 1.0f);
+                    dibujarArbol(x + 2.3f, z + 1.7f, .8f);
+                    dibujarBanco(x - 1.5f, z + 3.2f, 0);
+                    dibujarBanco(x + 3.1f, z - 2.8f, 90);
+                }
             }
         }
+    }
+
+    /** Plaza monumental original inspirada en el Cristo cruceño, construida solo con geometría propia. */
+    private void dibujarPlazaCristo(float x, float z) {
+        // Gradas, plataforma y cuatro columnas del mirador.
+        dibujarCubo(x, .13f, z, 8.10f, .26f, 8.10f, 0, .62f, .63f, .59f, 0, 0, 0);
+        dibujarCubo(x, .40f, z, 6.15f, .30f, 6.15f, 0, .76f, .75f, .68f, 0, 0, 0);
+        dibujarCubo(x, .85f, z, 3.90f, .62f, 3.90f, 0, .48f, .49f, .47f, 0, 0, 0);
+        for (float lateral : new float[]{-1.32f, 1.32f}) for (float fondo : new float[]{-1.12f, 1.12f}) {
+            dibujarCubo(x + lateral, 3.10f, z + fondo, .34f, 4.45f, .34f, 0, .80f, .80f, .74f, 0, 0, 0);
+        }
+        dibujarCubo(x, 5.35f, z, 3.35f, .35f, 3.15f, 0, .72f, .72f, .67f, 0, 0, 0);
+
+        // Figura estilizada: túnica, cabeza y brazos levantados en escalones.
+        float piedraR = .26f, piedraG = .31f, piedraB = .30f;
+        dibujarCubo(x, 6.15f, z, 1.20f, 2.15f, .78f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x, 7.50f, z, .82f, .72f, .72f, 0, .31f, .35f, .34f, 0, 0, 0);
+        dibujarCubo(x - .90f, 6.82f, z, 1.25f, .34f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x + .90f, 6.82f, z, 1.25f, .34f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x - 1.55f, 7.22f, z, .72f, .34f, .56f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x + 1.55f, 7.22f, z, .72f, .34f, .56f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x - 1.90f, 7.56f, z, .30f, .55f, .48f, 0, .34f, .38f, .37f, 0, 0, 0);
+        dibujarCubo(x + 1.90f, 7.56f, z, .30f, .55f, .48f, 0, .34f, .38f, .37f, 0, 0, 0);
+        dibujarBanco(x - 3.15f, z + 3.15f, 0);
+        dibujarBanco(x + 3.15f, z - 3.15f, 180);
+    }
+
+    /** Plaza cívica con tres banderas verde, blanco y verde sobre mástiles. */
+    private void dibujarPlazaBanderas(float x, float z) {
+        dibujarCubo(x, .13f, z, 8.10f, .26f, 8.10f, 0, .64f, .64f, .59f, 0, 0, 0);
+        dibujarCubo(x, .35f, z, 5.90f, .24f, 5.90f, 0, .76f, .75f, .68f, 0, 0, 0);
+        dibujarBanderaCruceña(x - 2.35f, z, 5.75f, .82f);
+        dibujarBanderaCruceña(x, z, 6.85f, 1.0f);
+        dibujarBanderaCruceña(x + 2.35f, z, 5.75f, .82f);
+        dibujarBanco(x - 2.8f, z + 3.25f, 0);
+        dibujarBanco(x + 2.8f, z - 3.25f, 180);
+    }
+
+    private void dibujarBanderaCruceña(float x, float z, float alto, float escala) {
+        float ancho = 2.25f * escala, franja = .52f * escala;
+        dibujarCubo(x, alto / 2, z, .12f, alto, .12f, 0, .18f, .19f, .20f, 0, 0, 0);
+        dibujarCubo(x, alto + .06f, z, .44f, .15f, .44f, 0, .52f, .48f, .18f, .10f, .08f, .01f);
+        float banderaX = x + ancho / 2;
+        dibujarCubo(banderaX, alto - franja * .40f, z, ancho, franja, .09f, 0, .02f, .42f, .16f, 0, 0, 0);
+        dibujarCubo(banderaX, alto - franja * 1.40f, z, ancho, franja, .09f, 0, .94f, .94f, .90f, 0, 0, 0);
+        dibujarCubo(banderaX, alto - franja * 2.40f, z, ancho, franja, .09f, 0, .02f, .42f, .16f, 0, 0, 0);
     }
 
     private void dibujarMarcasViales(float x, float z, int fila, int columna) {
