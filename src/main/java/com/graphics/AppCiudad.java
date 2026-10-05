@@ -25,22 +25,22 @@ public final class AppCiudad {
     private static final float VELOCIDAD = 15.0f, GIRO = 115.0f;
     private static final float RADIO_ENTREGA = 3.5f;
     private static final float[][] INTERSECCIONES = {
-        {-20, -20}, {0, -20}, {40, -20}, {-20, 40}, {0, 40}, {40, 40}
+        {-30, -30}, {0, -30}, {30, -30}, {-30, 30}, {0, 30}, {30, 30}
     };
 
     /* 0 = calle, 1 = manzana/edificio, 2 = parque. */
     private static final int[][] CIUDAD = {
-        {1,1,1,0,0,0,1,1,1,0,0},
-        {1,1,1,0,2,0,1,1,1,0,2},
-        {1,1,1,0,0,0,1,1,1,0,0},
+        {1,1,0,1,1,0,1,1,0,1,1},
+        {1,2,0,1,2,0,1,2,0,1,1},
         {0,0,0,0,0,0,0,0,0,0,0},
-        {2,0,1,1,1,0,2,0,1,1,1},
-        {0,0,1,1,1,0,0,0,1,1,1},
-        {1,1,1,0,0,0,1,1,1,0,0},
-        {1,1,1,0,2,0,1,1,1,0,2},
-        {1,1,1,0,0,0,1,1,1,0,0},
+        {1,1,0,1,1,0,1,1,0,1,1},
+        {2,1,0,1,1,0,1,2,0,1,1},
         {0,0,0,0,0,0,0,0,0,0,0},
-        {1,1,1,0,2,0,1,1,1,0,0}
+        {1,1,0,1,1,0,1,1,0,1,1},
+        {1,2,0,1,2,0,1,2,0,1,1},
+        {0,0,0,0,0,0,0,0,0,0,0},
+        {1,1,0,1,1,0,1,1,0,1,1},
+        {1,1,0,1,2,0,1,1,0,1,1}
     };
 
     private long window;
@@ -274,7 +274,7 @@ public final class AppCiudad {
 
     private void crearLamparas() {
         int k = 0;
-        for (float z : new float[]{-50, 0, 50}) for (float x : new float[]{-50, 0, 50}) {
+        for (float z : new float[]{-30, 0, 30}) for (float x : new float[]{-30, 0, 30}) {
             posicionLamparas[k++] = x; posicionLamparas[k++] = 7.0f; posicionLamparas[k++] = z;
         }
     }
@@ -400,9 +400,9 @@ public final class AppCiudad {
     private void dibujarMapaUI(float tiempo) {
         float[] vertices = new float[32768];
         int indice = 0;
-        // Panel cuadrado de alto contraste; el eje Z negativo queda arriba (norte).
-        indice = agregarRect(vertices, indice, -.97f, -.97f, .97f, .97f, .018f, .014f, .020f);
-        indice = agregarRect(vertices, indice, -.925f, -.925f, .925f, .925f, .42f, .40f, .34f);
+        // Panel inspirado en la paleta local: verde cruceño, blanco y piedra cálida.
+        indice = agregarRect(vertices, indice, -.97f, -.97f, .97f, .97f, .015f, .18f, .075f);
+        indice = agregarRect(vertices, indice, -.925f, -.925f, .925f, .925f, .78f, .73f, .62f);
         indice = agregarMarcoMapa(vertices, indice);
         for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
             float x = (columna - 5) * CELDA / 62.0f;
@@ -466,10 +466,10 @@ public final class AppCiudad {
     }
 
     private int agregarCalleMapa(float[] datos, int i, float x, float y, float mitad, int columna) {
-        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .018f, .017f, .020f);
+        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .18f, .16f, .13f);
         float borde = mitad * .82f;
-        i = agregarRect(datos, i, x - borde, y - borde, x + borde, y + borde, .075f, .073f, .070f);
-        boolean vertical = columna == 3 || columna == 5 || columna == 9;
+        i = agregarRect(datos, i, x - borde, y - borde, x + borde, y + borde, .38f, .34f, .28f);
+        boolean vertical = columna == 2 || columna == 5 || columna == 8;
         for (float d = -mitad * .55f; d <= mitad * .55f; d += mitad * .55f) {
             if (vertical) i = agregarRect(datos, i, x - .006f, y + d - .018f, x + .006f, y + d + .018f, .82f, .80f, .67f);
             else i = agregarRect(datos, i, x + d - .018f, y - .006f, x + d + .018f, y + .006f, .82f, .80f, .67f);
@@ -478,12 +478,13 @@ public final class AppCiudad {
     }
 
     private int agregarEdificioMapa(float[] datos, int i, float x, float y, float mitad, int fila, int columna) {
-        float tono = .34f + ((fila + columna) % 3) * .06f;
+        float[][] paleta = {{.69f, .36f, .20f}, {.82f, .72f, .54f}, {.73f, .68f, .58f}, {.58f, .33f, .23f}};
+        float[] color = paleta[(fila * 3 + columna) % paleta.length];
         float sesgoX = ((fila * 3 + columna) % 2 == 0) ? -.009f : .009f;
         float sesgoY = ((fila + columna * 2) % 2 == 0) ? .007f : -.007f;
         i = agregarRect(datos, i, x - mitad + .010f, y - mitad - .010f, x + mitad + .010f, y + mitad - .010f, .025f, .024f, .028f);
-        i = agregarRect(datos, i, x - mitad * .83f + sesgoX, y - mitad * .83f + sesgoY, x + mitad * .83f + sesgoX, y + mitad * .83f + sesgoY, tono * .73f, tono * .72f, tono * .66f);
-        i = agregarRect(datos, i, x - mitad * .58f + sesgoX, y - mitad * .58f + sesgoY, x + mitad * .58f + sesgoX, y + mitad * .58f + sesgoY, Math.min(.92f, tono + .28f), Math.min(.90f, tono + .26f), Math.min(.84f, tono + .20f));
+        i = agregarRect(datos, i, x - mitad * .83f + sesgoX, y - mitad * .83f + sesgoY, x + mitad * .83f + sesgoX, y + mitad * .83f + sesgoY, color[0] * .74f, color[1] * .74f, color[2] * .74f);
+        i = agregarRect(datos, i, x - mitad * .58f + sesgoX, y - mitad * .58f + sesgoY, x + mitad * .58f + sesgoX, y + mitad * .58f + sesgoY, color[0], color[1], color[2]);
         // Azotea y detalles de fachada: generan volumen sin saturar el panel.
         i = agregarRect(datos, i, x - mitad * .64f + sesgoX, y + mitad * .38f + sesgoY, x + mitad * .64f + sesgoX, y + mitad * .53f + sesgoY, .74f, .74f, .68f);
         return agregarRect(datos, i, x - mitad * .14f + sesgoX, y - mitad * .42f + sesgoY, x + mitad * .14f + sesgoX, y + mitad * .28f + sesgoY, .48f, .50f, .50f);
@@ -520,11 +521,17 @@ public final class AppCiudad {
     }
 
     private int agregarMarcoMapa(float[] datos, int i) {
-        float rosaR = .86f, rosaG = .30f, rosaB = .74f;
-        i = agregarRect(datos, i, -.965f, .935f, .965f, .965f, rosaR, rosaG, rosaB);
-        i = agregarRect(datos, i, -.965f, -.965f, .965f, -.935f, rosaR, rosaG, rosaB);
-        i = agregarRect(datos, i, -.965f, -.965f, -.935f, .965f, rosaR, rosaG, rosaB);
-        return agregarRect(datos, i, .935f, -.965f, .965f, .965f, rosaR, rosaG, rosaB);
+        float verdeR = .02f, verdeG = .45f, verdeB = .17f;
+        i = agregarRect(datos, i, -.965f, .935f, .965f, .965f, verdeR, verdeG, verdeB);
+        i = agregarRect(datos, i, -.965f, -.965f, .965f, -.935f, verdeR, verdeG, verdeB);
+        i = agregarRect(datos, i, -.965f, -.965f, -.935f, .965f, verdeR, verdeG, verdeB);
+        i = agregarRect(datos, i, .935f, -.965f, .965f, .965f, verdeR, verdeG, verdeB);
+        // Línea blanca interior: referencia visual directa a la bandera cruceña.
+        float blanco = .94f;
+        i = agregarRect(datos, i, -.935f, .910f, .935f, .924f, blanco, blanco, blanco);
+        i = agregarRect(datos, i, -.935f, -.924f, .935f, -.910f, blanco, blanco, blanco);
+        i = agregarRect(datos, i, -.924f, -.910f, -.910f, .910f, blanco, blanco, blanco);
+        return agregarRect(datos, i, .910f, -.910f, .924f, .910f, blanco, blanco, blanco);
     }
 
     /** Insignia N construida con rectángulos, sin necesidad de una fuente o textura. */
@@ -690,7 +697,7 @@ public final class AppCiudad {
 
     private void dibujarMarcasViales(float x, float z, int fila, int columna) {
         // Carriles discontinuos: verticales en los corredores norte-sur y horizontales en los demás.
-        boolean ejeVertical = columna == 3 || columna == 5 || columna == 9;
+        boolean ejeVertical = columna == 2 || columna == 5 || columna == 8;
         for (float tramo = -3.4f; tramo <= 3.4f; tramo += 3.4f) {
             if (ejeVertical) dibujarCubo(x, .025f, z + tramo, .16f, .035f, 1.05f, 0, .88f, .78f, .26f, 0, 0, 0);
             else dibujarCubo(x + tramo, .025f, z, 1.05f, .035f, .16f, 0, .88f, .78f, .26f, 0, 0, 0);
