@@ -603,25 +603,28 @@ public final class AppCiudad {
 
     /** Plaza monumental original inspirada en el Cristo cruceño, construida solo con geometría propia. */
     private void dibujarPlazaCristo(float x, float z) {
-        // Gradas, plataforma y cuatro columnas del mirador.
+        // Gradas bajas: el conjunto prioriza la figura, no una estructura de columnas.
         dibujarCubo(x, .13f, z, 8.10f, .26f, 8.10f, 0, .62f, .63f, .59f, 0, 0, 0);
-        dibujarCubo(x, .40f, z, 6.15f, .30f, 6.15f, 0, .76f, .75f, .68f, 0, 0, 0);
-        dibujarCubo(x, .85f, z, 3.90f, .62f, 3.90f, 0, .48f, .49f, .47f, 0, 0, 0);
-        for (float lateral : new float[]{-1.32f, 1.32f}) for (float fondo : new float[]{-1.12f, 1.12f}) {
-            dibujarCubo(x + lateral, 3.10f, z + fondo, .34f, 4.45f, .34f, 0, .80f, .80f, .74f, 0, 0, 0);
-        }
-        dibujarCubo(x, 5.35f, z, 3.35f, .35f, 3.15f, 0, .72f, .72f, .67f, 0, 0, 0);
+        dibujarCubo(x, .40f, z, 5.85f, .30f, 5.85f, 0, .76f, .75f, .68f, 0, 0, 0);
+        dibujarCubo(x, .80f, z, 3.70f, .52f, 3.70f, 0, .40f, .42f, .41f, 0, 0, 0);
+        dibujarCubo(x, 1.35f, z, 2.35f, .66f, 2.05f, 0, .32f, .35f, .34f, 0, 0, 0);
 
-        // Figura estilizada: túnica, cabeza y brazos levantados en escalones.
-        float piedraR = .26f, piedraG = .31f, piedraB = .30f;
-        dibujarCubo(x, 6.15f, z, 1.20f, 2.15f, .78f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
-        dibujarCubo(x, 7.50f, z, .82f, .72f, .72f, 0, .31f, .35f, .34f, 0, 0, 0);
-        dibujarCubo(x - .90f, 6.82f, z, 1.25f, .34f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
-        dibujarCubo(x + .90f, 6.82f, z, 1.25f, .34f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
-        dibujarCubo(x - 1.55f, 7.22f, z, .72f, .34f, .56f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
-        dibujarCubo(x + 1.55f, 7.22f, z, .72f, .34f, .56f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
-        dibujarCubo(x - 1.90f, 7.56f, z, .30f, .55f, .48f, 0, .34f, .38f, .37f, 0, 0, 0);
-        dibujarCubo(x + 1.90f, 7.56f, z, .30f, .55f, .48f, 0, .34f, .38f, .37f, 0, 0, 0);
+        // Figura monumental: una túnica escalonada, cabeza redondeada y brazos formando una V clara.
+        float piedraR = .22f, piedraG = .29f, piedraB = .28f;
+        dibujarCubo(x, 2.85f, z, 1.60f, 2.45f, 1.02f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x, 4.40f, z, 1.30f, 1.18f, .88f, 0, .25f, .32f, .31f, 0, 0, 0);
+        dibujarEsfera(x, 5.35f, z, .47f, .55f, .47f, .40f, .43f, .39f, 0, 0, 0);
+        // Cabello/capucha detrás de la cabeza para separar visualmente la silueta del cielo.
+        dibujarCubo(x, 5.42f, z + .20f, .92f, .95f, .28f, 0, .12f, .17f, .17f, 0, 0, 0);
+        // Hombros y brazos en escalones ascendentes: la lectura frontal es inequívocamente de brazos levantados.
+        dibujarCubo(x - .83f, 4.76f, z, 1.05f, .38f, .72f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x + .83f, 4.76f, z, 1.05f, .38f, .72f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x - 1.38f, 5.14f, z, .60f, .42f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x + 1.38f, 5.14f, z, .60f, .42f, .62f, 0, piedraR, piedraG, piedraB, 0, 0, 0);
+        dibujarCubo(x - 1.68f, 5.55f, z, .34f, .65f, .54f, 0, .26f, .33f, .32f, 0, 0, 0);
+        dibujarCubo(x + 1.68f, 5.55f, z, .34f, .65f, .54f, 0, .26f, .33f, .32f, 0, 0, 0);
+        dibujarEsfera(x - 1.68f, 6.00f, z, .20f, .27f, .20f, .42f, .44f, .40f, 0, 0, 0);
+        dibujarEsfera(x + 1.68f, 6.00f, z, .20f, .27f, .20f, .42f, .44f, .40f, 0, 0, 0);
         dibujarBanco(x - 3.15f, z + 3.15f, 0);
         dibujarBanco(x + 3.15f, z - 3.15f, 180);
     }
