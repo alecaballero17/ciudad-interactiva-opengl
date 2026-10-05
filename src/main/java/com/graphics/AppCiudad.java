@@ -43,7 +43,7 @@ public final class AppCiudad {
 
     private long window;
     private int programa, vaoCubo, vboCubo;
-    private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche;
+    private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche, uModoMapa;
     private int uLamparas, uFocosPos, uFocosDir, uFocosActivos;
     private final List<Caja> edificios = new ArrayList<>();
     private final float[] vista = identidad(), proyeccion = identidad();
@@ -121,9 +121,13 @@ public final class AppCiudad {
             in vec3 posMundo; in vec3 normalMundo;
             out vec4 fragColor;
             uniform vec3 uColor, uEmision, uCamara, uSol;
-            uniform bool uNoche, uFocosActivos;
+            uniform bool uNoche, uFocosActivos, uModoMapa;
             uniform vec3 uLamparas[9], uFocosPos[2], uFocosDir[2];
             void main() {
+                if (uModoMapa) {
+                    fragColor = vec4(uColor + uEmision, 1.0);
+                    return;
+                }
                 vec3 n = normalize(normalMundo);
                 vec3 luz = (uNoche ? vec3(0.10, 0.12, 0.20) : vec3(0.48, 0.52, 0.58));
                 float difSol = max(dot(n, normalize(-uSol)), 0.0);
@@ -152,6 +156,7 @@ public final class AppCiudad {
         uCamara = GL20.glGetUniformLocation(programa, "uCamara");
         uSol = GL20.glGetUniformLocation(programa, "uSol");
         uNoche = GL20.glGetUniformLocation(programa, "uNoche");
+        uModoMapa = GL20.glGetUniformLocation(programa, "uModoMapa");
         uLamparas = GL20.glGetUniformLocation(programa, "uLamparas");
         uFocosPos = GL20.glGetUniformLocation(programa, "uFocosPos");
         uFocosDir = GL20.glGetUniformLocation(programa, "uFocosDir");
@@ -295,7 +300,7 @@ public final class AppCiudad {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             GL11.glViewport(mapaX, mapaY, lado, lado);
-            perspectiva(proyeccionMinimapa, 54, 1, 0.1f, 250);
+            ortografica(proyeccionMinimapa, -62, 62, -62, 62, 0.1f, 250);
             mirar(vistaMinimapa, 0, 122, 0, 0, 0, 0, 0, 0, -1);
             dibujarMinimapa(tiempo);
             GL11.glViewport(0, 0, ancho[0], alto[0]);
@@ -306,7 +311,7 @@ public final class AppCiudad {
         GL20.glUseProgram(programa);
         GL20.glUniformMatrix4fv(uVista, false, matrizVista); GL20.glUniformMatrix4fv(uProyeccion, false, matrizProyeccion);
         GL20.glUniform3f(uCamara, camX, camY, camZ); GL20.glUniform3f(uSol, -0.35f, -1.0f, -0.25f);
-        GL20.glUniform1i(uNoche, noche ? 1 : 0); GL20.glUniform3fv(uLamparas, posicionLamparas);
+        GL20.glUniform1i(uNoche, noche ? 1 : 0); GL20.glUniform1i(uModoMapa, 0); GL20.glUniform3fv(uLamparas, posicionLamparas);
         actualizarFocos(); GL20.glUniform3fv(uFocosPos, posicionFocos); GL20.glUniform3fv(uFocosDir, direccionFocos); GL20.glUniform1i(uFocosActivos, focos ? 1 : 0);
         GL30.glBindVertexArray(vaoCubo);
         dibujarCubo(0, -0.35f, 0, 110, 0.5f, 110, 0, 0.14f, 0.15f, 0.17f, 0, 0, 0);
@@ -322,6 +327,7 @@ public final class AppCiudad {
         GL20.glUniform3f(uCamara, 0, 122, 0);
         GL20.glUniform3f(uSol, -0.35f, -1.0f, -0.25f);
         GL20.glUniform1i(uNoche, 0);
+        GL20.glUniform1i(uModoMapa, 1);
         GL20.glUniform3fv(uLamparas, posicionLamparas);
         GL20.glUniform1i(uFocosActivos, 0);
         GL30.glBindVertexArray(vaoCubo);
