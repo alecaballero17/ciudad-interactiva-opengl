@@ -19,7 +19,8 @@ public final class AppCiudad {
     private static final int ANCHO = 1280, ALTO = 720;
     private static final int TAMANO_CIUDAD = 11;
     private static final float CELDA = 10.0f, LIMITE = 55.0f;
-    private static final float AUTO_ANCHO = 1.55f, AUTO_LARGO = 3.65f;
+    // La colisión representa el chasis, no toda la carrocería visual del minibús.
+    private static final float COLISION_MITAD_ANCHO = .78f, COLISION_MITAD_LARGO = 2.15f;
     private static final float VELOCIDAD = 15.0f, GIRO = 115.0f;
     private static final float RADIO_ENTREGA = 3.5f;
     private static final float[][] INTERSECCIONES = {
@@ -296,13 +297,24 @@ public final class AppCiudad {
             float rad = (float) Math.toRadians(vehiculo.getAngulo());
             float candidatoX = vehiculo.getX() + (float) Math.sin(rad) * movimiento;
             float candidatoZ = vehiculo.getZ() + (float) Math.cos(rad) * movimiento;
-            if (!colisiona(candidatoX, candidatoZ)) vehiculo.moverA(candidatoX, candidatoZ);
+            if (!colisiona(candidatoX, candidatoZ)) {
+                vehiculo.moverA(candidatoX, candidatoZ);
+            } else if (!colisiona(candidatoX, vehiculo.getZ())) {
+                // Deslizamiento: rozar una esquina no bloquea toda la marcha.
+                vehiculo.moverA(candidatoX, vehiculo.getZ());
+            } else if (!colisiona(vehiculo.getX(), candidatoZ)) {
+                vehiculo.moverA(vehiculo.getX(), candidatoZ);
+            }
         }
     }
 
     private boolean colisiona(float x, float z) {
-        if (x - AUTO_ANCHO < -LIMITE || x + AUTO_ANCHO > LIMITE || z - AUTO_LARGO < -LIMITE || z + AUTO_LARGO > LIMITE) return true;
-        for (Caja e : edificios) if (Math.abs(x - e.x) < AUTO_ANCHO + e.mitadX && Math.abs(z - e.z) < AUTO_LARGO + e.mitadZ) return true;
+        float rad = (float) Math.toRadians(vehiculo.getAngulo());
+        // Proyección de una caja rotada sobre X/Z: elimina los muros invisibles al girar.
+        float mitadX = Math.abs((float) Math.cos(rad)) * COLISION_MITAD_ANCHO + Math.abs((float) Math.sin(rad)) * COLISION_MITAD_LARGO;
+        float mitadZ = Math.abs((float) Math.sin(rad)) * COLISION_MITAD_ANCHO + Math.abs((float) Math.cos(rad)) * COLISION_MITAD_LARGO;
+        if (x - mitadX < -LIMITE || x + mitadX > LIMITE || z - mitadZ < -LIMITE || z + mitadZ > LIMITE) return true;
+        for (Caja e : edificios) if (Math.abs(x - e.x) < mitadX + e.mitadX && Math.abs(z - e.z) < mitadZ + e.mitadZ) return true;
         return false;
     }
 
