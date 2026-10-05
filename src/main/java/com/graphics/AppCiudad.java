@@ -599,8 +599,9 @@ public final class AppCiudad {
             int tipo = CIUDAD[fila][columna];
             if (tipo == 0) {
                 // Acera clara alrededor de una calzada de asfalto oscuro.
-                dibujarCubo(x, -0.04f, z, 9.82f, .13f, 9.82f, 0, .56f, .53f, .46f, 0, 0, 0);
-                dibujarCubo(x, .035f, z, 8.92f, .055f, 8.92f, 0, .105f, .11f, .11f, 0, 0, 0);
+                // Capas elevadas para que la calzada no tenga conflicto de profundidad con el suelo base.
+                dibujarCubo(x, .05f, z, 9.82f, .22f, 9.82f, 0, .56f, .53f, .46f, .03f, .03f, .025f);
+                dibujarCubo(x, .18f, z, 8.92f, .07f, 8.92f, 0, .08f, .085f, .085f, .075f, .078f, .075f);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
                 if (fila == 4 && columna == 4) {
@@ -701,15 +702,15 @@ public final class AppCiudad {
         // Diseño vial: doble línea amarilla central y líneas blancas en ambos bordes del asfalto.
         boolean ejeVertical = columna == 2 || columna == 5 || columna == 8;
         if (ejeVertical) {
-            dibujarCubo(x - .24f, .075f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x + .24f, .075f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x - 4.03f, .073f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
-            dibujarCubo(x + 4.03f, .073f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x - .24f, .235f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x + .24f, .235f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x - 4.03f, .233f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x + 4.03f, .233f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
         } else {
-            dibujarCubo(x, .075f, z - .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x, .075f, z + .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x, .073f, z - 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
-            dibujarCubo(x, .073f, z + 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x, .235f, z - .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x, .235f, z + .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x, .233f, z - 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x, .233f, z + 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
         }
     }
 
@@ -753,8 +754,8 @@ public final class AppCiudad {
         for (float[] cruce : INTERSECCIONES) {
             for (int i = -3; i <= 3; i++) {
                 float desplazamiento = i * .72f;
-                dibujarCubo(cruce[0] + desplazamiento, .025f, cruce[1] - 3.8f, .34f, .04f, 1.25f, 0, .78f, .78f, .72f, 0, 0, 0);
-                dibujarCubo(cruce[0] - 3.8f, .025f, cruce[1] + desplazamiento, 1.25f, .04f, .34f, 0, .78f, .78f, .72f, 0, 0, 0);
+                dibujarCubo(cruce[0] + desplazamiento, .245f, cruce[1] - 3.8f, .34f, .04f, 1.25f, 0, .78f, .78f, .72f, 0, 0, 0);
+                dibujarCubo(cruce[0] - 3.8f, .245f, cruce[1] + desplazamiento, 1.25f, .04f, .34f, 0, .78f, .78f, .72f, 0, 0, 0);
             }
         }
     }
