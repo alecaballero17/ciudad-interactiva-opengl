@@ -295,10 +295,9 @@ public final class AppCiudad {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             GL11.glViewport(mapaX, mapaY, lado, lado);
-            // Perspectiva cenital: más robusta entre controladores y conserva profundidad urbana.
-            perspectiva(proyeccionMinimapa, 50, 1, 0.1f, 250);
+            perspectiva(proyeccionMinimapa, 54, 1, 0.1f, 250);
             mirar(vistaMinimapa, 0, 122, 0, 0, 0, 0, 0, 0, -1);
-            dibujarEscena(tiempo, vistaMinimapa, proyeccionMinimapa, 0, 122, 0);
+            dibujarMinimapa(tiempo);
             GL11.glViewport(0, 0, ancho[0], alto[0]);
         }
     }
@@ -313,6 +312,42 @@ public final class AppCiudad {
         dibujarCubo(0, -0.35f, 0, 110, 0.5f, 110, 0, 0.14f, 0.15f, 0.17f, 0, 0, 0);
         dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo); dibujarAuto();
         GL30.glBindVertexArray(0); GL20.glUseProgram(0);
+    }
+
+    /** Vista cenital esquemática: prioriza información legible sobre detalle 3D. */
+    private void dibujarMinimapa(float tiempo) {
+        GL20.glUseProgram(programa);
+        GL20.glUniformMatrix4fv(uVista, false, vistaMinimapa);
+        GL20.glUniformMatrix4fv(uProyeccion, false, proyeccionMinimapa);
+        GL20.glUniform3f(uCamara, 0, 122, 0);
+        GL20.glUniform3f(uSol, -0.35f, -1.0f, -0.25f);
+        GL20.glUniform1i(uNoche, 0);
+        GL20.glUniform3fv(uLamparas, posicionLamparas);
+        GL20.glUniform1i(uFocosActivos, 0);
+        GL30.glBindVertexArray(vaoCubo);
+
+        // Marco interior oscuro y plano de base para separar claramente el panel de la escena.
+        dibujarCubo(0, -.50f, 0, 116, .30f, 116, 0, .018f, .030f, .060f, .01f, .02f, .05f);
+        for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
+            float x = (columna - 5) * CELDA, z = (fila - 5) * CELDA;
+            switch (CIUDAD[fila][columna]) {
+                case 0 -> dibujarCubo(x, -.15f, z, 9.25f, .20f, 9.25f, 0, .13f, .16f, .22f, .035f, .045f, .07f);
+                case 1 -> dibujarCubo(x, .22f, z, 8.25f, .72f, 8.25f, 0, .10f, .36f, .58f, .03f, .13f, .22f);
+                case 2 -> dibujarCubo(x, .18f, z, 8.25f, .60f, 8.25f, 0, .06f, .38f, .15f, .02f, .15f, .05f);
+                default -> throw new IllegalStateException("Tipo de celda desconocido");
+            }
+        }
+
+        float r = (float) Math.toRadians(vehiculo.getAngulo());
+        float adelanteX = (float) Math.sin(r), adelanteZ = (float) Math.cos(r);
+        // Marcador del auto: franja turquesa más una punta clara que indica dirección.
+        dibujarCubo(vehiculo.getX(), .72f, vehiculo.getZ(), 2.25f, .30f, 4.30f, vehiculo.getAngulo(), .03f, .88f, .86f, .02f, .50f, .46f);
+        dibujarCubo(vehiculo.getX() + adelanteX * 1.55f, .78f, vehiculo.getZ() + adelanteZ * 1.55f, 1.55f, .32f, 1.15f, vehiculo.getAngulo(), .92f, .98f, 1.0f, .45f, .50f, .52f);
+        float pulso = .52f + .12f * (float) Math.sin(tiempo * 4.0f);
+        dibujarCubo(destinoX, .72f, destinoZ, 3.0f * pulso, .34f, 3.0f * pulso, tiempo * 50, .82f, .12f, .96f, .58f, .04f, .72f);
+
+        GL30.glBindVertexArray(0);
+        GL20.glUseProgram(0);
     }
 
     private void dibujarCiudad() {
