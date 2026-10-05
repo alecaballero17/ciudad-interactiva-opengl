@@ -97,6 +97,7 @@ public final class AppCiudad {
         crearCiudad();
         crearLamparas();
         generarNuevoDestino();
+        actualizarTitulo();
         GLFW.glfwShowWindow(window);
     }
 
@@ -233,14 +234,23 @@ public final class AppCiudad {
         return false;
     }
 
-    private void reiniciarAuto() { autoX = 0; autoZ = -48; autoAngulo = 0; }
+    private void reiniciarAuto() {
+        autoX = 0; autoZ = -48; autoAngulo = 0;
+        entregasCompletadas = 0;
+        generarNuevoDestino();
+        actualizarTitulo();
+    }
+
+    private void actualizarTitulo() {
+        GLFW.glfwSetWindowTitle(window, "Ciudad interactiva - Entregas completadas: " + entregasCompletadas);
+    }
 
     private void actualizarMision() {
         float dx = autoX - destinoX, dz = autoZ - destinoZ;
         if (dx * dx + dz * dz <= RADIO_ENTREGA * RADIO_ENTREGA) {
             entregasCompletadas++;
-            GLFW.glfwSetWindowTitle(window, "Ciudad interactiva - Entregas completadas: " + entregasCompletadas);
             generarNuevoDestino();
+            actualizarTitulo();
         }
     }
 
