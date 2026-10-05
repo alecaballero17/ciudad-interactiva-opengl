@@ -26,20 +26,20 @@
 ---
 
 > [!IMPORTANT]
-> **Misión activa:** encuentra la baliza violeta, llega con el automóvil y recibe un nuevo destino. Todo mientras esquivas edificios, exploras parques y eliges entre la ciudad de día o de noche.
+> **Misión activa:** encuentra el carrito de somó, llega con el minibús y recibe un nuevo destino. Todo mientras esquivas edificios, exploras parques y eliges entre la ciudad de día o de noche.
 
 ## ✨ ¿Qué hace especial a esta ciudad?
 
 | 🌆 Mundo vivo | 💡 Luz que cambia | 🎯 Juego de entregas |
 | :--- | :--- | :--- |
-| 11 × 11 celdas conectadas, edificios de alturas variables, parques y pasos peatonales. | Día/noche, farolas con atenuación, faros direccionales y ventanas nocturnas emisivas. | Baliza 3D animada, destino aleatorio válido y contador de entregas actualizado. |
+| 11 × 11 celdas conectadas, edificios de alturas variables, parques y pasos peatonales. | Día/noche, farolas con atenuación, faros direccionales y ventanas nocturnas emisivas. | Carrito de somó 3D animado, destino aleatorio válido y contador de entregas actualizado. |
 
 ```mermaid
 flowchart LR
     A[⌨️ Conducción] --> B{🚧 Colisión AABB}
     B -->|Camino libre| C[🚗 Ciudad 3D]
     B -->|Edificio o límite| A
-    C --> D[🎯 Baliza de entrega]
+    C --> D[🎯 Carrito de somó]
     D -->|Llegada| E[✅ Nueva misión]
     C --> F[💡 Iluminación GLSL]
     C --> G[🗺️ Minimapa cenital]
@@ -71,7 +71,7 @@ mvn exec:java
 <table align="center">
   <tr><th>Tecla</th><th>Acción</th></tr>
   <tr><td><code>W</code> / <code>S</code></td><td>Avanzar / retroceder</td></tr>
-  <tr><td><code>A</code> / <code>D</code></td><td>Girar el automóvil</td></tr>
+  <tr><td><code>A</code> / <code>D</code></td><td>Girar el minibús</td></tr>
   <tr><td><code>R</code></td><td>Reiniciar posición y orientación</td></tr>
   <tr><td><code>C</code></td><td>Alternar tercera persona / cámara orbital</td></tr>
   <tr><td><code>N</code></td><td>Alternar día / noche</td></tr>
@@ -85,14 +85,14 @@ mvn exec:java
 ### 🏙️ Ciudad y conducción
 
 - **Mapa expandido:** cuadrícula de 11 × 11 celdas, más de 12 manzanas construidas y múltiples parques conectados por calles.
-- **Automóvil 3D:** controlado con `delta time`, con límites físicos y detección de colisiones AABB.
+- **Minibús 3D:** inspirado en el transporte urbano cruceño, controlado con `delta time`, con límites físicos y detección de colisiones AABB.
 - **Dos cámaras:** una cámara de seguimiento para conducir y una orbital para apreciar el escenario completo.
 
 ### 💡 Iluminación que transforma la escena
 
 ```text
 ☀️ Día  → luz ambiental + direccional
-🌙 Noche → farolas cálidas + ventanas emisivas + faros del auto
+🌙 Noche → farolas cálidas + ventanas emisivas + faros del minibús
 ```
 
 - VBO de cubo completo: **36 vértices**, posiciones `vec3` y normales unitarias `vec3`.
@@ -108,8 +108,8 @@ mvn exec:java
 ### 🗺️ Minimapa y misiones
 
 - Segunda pasada de render mediante `glViewport` y proyección ortográfica.
-- Vista superior con norte hacia arriba, ciudad completa, marcador de orientación del auto y destino actual.
-- Baliza violeta flotante y animada: al alcanzarla, se genera una nueva misión en una calle transitable.
+- Vista superior con norte hacia arriba, ciudad completa, marcador de orientación del minibús y destino actual.
+- Carrito de somó flotante y animado: al alcanzarlo, se genera una nueva misión en una calle transitable.
 
 ## 🧩 Arquitectura
 
@@ -120,7 +120,7 @@ src/main/java/com/graphics/AppCiudad.java
 ├── VAO / VBO reutilizable para todos los cubos
 ├── Shaders GLSL: iluminación, emisión y focos
 ├── Matriz urbana, edificios y colisiones AABB
-├── Automóvil, cámaras y entrada por teclado
+├── Minibús, cámaras y entrada por teclado
 ├── Decoración: parques, bancos, farolas y semáforos
 └── Doble render: vista principal + minimapa
 ```
@@ -141,7 +141,7 @@ ciudad-interactiva-opengl/
 │   └── ciudad-interactiva-hero.png   # Ilustración de portada
 ├── src/main/java/com/graphics/
 │   ├── AppCiudad.java                # Ciudad, render, luces y misiones
-│   └── Vehiculo.java                 # Estado y movimiento del automóvil
+│   └── Vehiculo.java                 # Estado y movimiento del minibús
 ├── .gitignore
 ├── pom.xml
 └── README.md
@@ -151,7 +151,7 @@ ciudad-interactiva-opengl/
 <summary><strong>⚠️ Limitaciones conocidas</strong></summary>
 <br>
 
-- Los semáforos tienen alcance visual, por lo que no detienen al automóvil.
+- Los semáforos tienen alcance visual, por lo que no detienen al minibús.
 - La colisión usa una caja alineada a los ejes para priorizar claridad y rendimiento.
 - La ciudad se construye proceduralmente con cubos y shaders; no utiliza texturas ni modelos externos.
 </details>
