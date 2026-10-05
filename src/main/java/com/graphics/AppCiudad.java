@@ -44,7 +44,7 @@ public final class AppCiudad {
     };
 
     private long window;
-    private int programa, programaMapa, vaoCubo, vboCubo, vaoEsfera, vboEsfera, verticesEsfera, vaoMapa, vboMapa;
+    private int programa, programaMapa, vaoCubo, vboCubo, vaoPlano, vboPlano, vaoEsfera, vboEsfera, verticesEsfera, vaoMapa, vboMapa;
     private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche, uModoMapa;
     private int uLamparas, uFocosPos, uFocosDir, uFocosActivos;
     private final List<Caja> edificios = new ArrayList<>();
@@ -97,6 +97,7 @@ public final class AppCiudad {
         GL11.glDisable(GL11.GL_CULL_FACE);
         crearShaders();
         crearCuboCompleto();
+        crearPlanoPavimento();
         crearEsfera();
         crearMapaUI();
         crearCiudad();
@@ -221,6 +222,22 @@ public final class AppCiudad {
         };
         vaoCubo = GL30.glGenVertexArrays(); vboCubo = GL15.glGenBuffers();
         GL30.glBindVertexArray(vaoCubo); GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboCubo);
+        FloatBuffer datos = BufferUtils.createFloatBuffer(v.length); datos.put(v).flip();
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, datos, GL15.GL_STATIC_DRAW);
+        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 0);
+        GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 3L * Float.BYTES);
+        GL20.glEnableVertexAttribArray(0); GL20.glEnableVertexAttribArray(1);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0); GL30.glBindVertexArray(0);
+    }
+
+    /** Plano horizontal independiente para calzadas y marcas: evita artefactos en caras superiores del cubo. */
+    private void crearPlanoPavimento() {
+        float[] v = {
+            -1,0,-1, 0,1,0,   1,0,-1, 0,1,0,   1,0, 1, 0,1,0,
+            -1,0,-1, 0,1,0,   1,0, 1, 0,1,0,  -1,0, 1, 0,1,0
+        };
+        vaoPlano = GL30.glGenVertexArrays(); vboPlano = GL15.glGenBuffers();
+        GL30.glBindVertexArray(vaoPlano); GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboPlano);
         FloatBuffer datos = BufferUtils.createFloatBuffer(v.length); datos.put(v).flip();
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, datos, GL15.GL_STATIC_DRAW);
         GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 0);
@@ -599,9 +616,9 @@ public final class AppCiudad {
             int tipo = CIUDAD[fila][columna];
             if (tipo == 0) {
                 // Acera clara alrededor de una calzada de asfalto oscuro.
-                // Capas elevadas para que la calzada no tenga conflicto de profundidad con el suelo base.
-                dibujarCubo(x, .05f, z, 9.82f, .22f, 9.82f, 0, .56f, .53f, .46f, .03f, .03f, .025f);
-                dibujarCubo(x, .18f, z, 8.92f, .07f, 8.92f, 0, .08f, .085f, .085f, .075f, .078f, .075f);
+                // Planos independientes: acera y calzada no comparten la cara superior del cubo.
+                dibujarPlanoPavimento(x, .12f, z, 9.82f, 9.82f, .56f, .53f, .46f, .03f, .03f, .025f);
+                dibujarPlanoPavimento(x, .18f, z, 8.92f, 8.92f, .08f, .085f, .085f, .075f, .078f, .075f);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
                 if (fila == 4 && columna == 4) {
@@ -702,15 +719,15 @@ public final class AppCiudad {
         // Diseño vial: doble línea amarilla central y líneas blancas en ambos bordes del asfalto.
         boolean ejeVertical = columna == 2 || columna == 5 || columna == 8;
         if (ejeVertical) {
-            dibujarCubo(x - .24f, .235f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x + .24f, .235f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x - 4.03f, .233f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
-            dibujarCubo(x + 4.03f, .233f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarPlanoPavimento(x - .24f, .235f, z, .11f, 8.55f, .96f, .58f, .10f, 0, 0, 0);
+            dibujarPlanoPavimento(x + .24f, .235f, z, .11f, 8.55f, .96f, .58f, .10f, 0, 0, 0);
+            dibujarPlanoPavimento(x - 4.03f, .233f, z, .075f, 8.55f, .92f, .91f, .84f, 0, 0, 0);
+            dibujarPlanoPavimento(x + 4.03f, .233f, z, .075f, 8.55f, .92f, .91f, .84f, 0, 0, 0);
         } else {
-            dibujarCubo(x, .235f, z - .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x, .235f, z + .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
-            dibujarCubo(x, .233f, z - 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
-            dibujarCubo(x, .233f, z + 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarPlanoPavimento(x, .235f, z - .24f, 8.55f, .11f, .96f, .58f, .10f, 0, 0, 0);
+            dibujarPlanoPavimento(x, .235f, z + .24f, 8.55f, .11f, .96f, .58f, .10f, 0, 0, 0);
+            dibujarPlanoPavimento(x, .233f, z - 4.03f, 8.55f, .075f, .92f, .91f, .84f, 0, 0, 0);
+            dibujarPlanoPavimento(x, .233f, z + 4.03f, 8.55f, .075f, .92f, .91f, .84f, 0, 0, 0);
         }
     }
 
@@ -754,8 +771,8 @@ public final class AppCiudad {
         for (float[] cruce : INTERSECCIONES) {
             for (int i = -3; i <= 3; i++) {
                 float desplazamiento = i * .72f;
-                dibujarCubo(cruce[0] + desplazamiento, .245f, cruce[1] - 3.8f, .34f, .04f, 1.25f, 0, .78f, .78f, .72f, 0, 0, 0);
-                dibujarCubo(cruce[0] - 3.8f, .245f, cruce[1] + desplazamiento, 1.25f, .04f, .34f, 0, .78f, .78f, .72f, 0, 0, 0);
+                dibujarPlanoPavimento(cruce[0] + desplazamiento, .255f, cruce[1] - 3.8f, .34f, 1.25f, .78f, .78f, .72f, 0, 0, 0);
+                dibujarPlanoPavimento(cruce[0] - 3.8f, .255f, cruce[1] + desplazamiento, 1.25f, .34f, .78f, .78f, .72f, 0, 0, 0);
             }
         }
     }
@@ -902,6 +919,14 @@ public final class AppCiudad {
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
     }
 
+    private void dibujarPlanoPavimento(float x, float y, float z, float sx, float sz, float r, float g, float b, float er, float eg, float eb) {
+        float[] modelo = modelo(x, y, z, sx / 2, 1, sz / 2, 0);
+        GL20.glUniformMatrix4fv(uModelo, false, modelo); GL20.glUniform3f(uColor, r, g, b); GL20.glUniform3f(uEmision, er, eg, eb);
+        GL30.glBindVertexArray(vaoPlano);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
+        GL30.glBindVertexArray(vaoCubo);
+    }
+
     private void dibujarEsfera(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b, float er, float eg, float eb) {
         float[] modelo = modelo(x, y, z, sx, sy, sz, 0);
         GL20.glUniformMatrix4fv(uModelo, false, modelo); GL20.glUniform3f(uColor, r, g, b); GL20.glUniform3f(uEmision, er, eg, eb);
@@ -912,8 +937,8 @@ public final class AppCiudad {
 
     private void liberar() {
         GL20.glDeleteProgram(programa); GL20.glDeleteProgram(programaMapa);
-        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboEsfera); GL15.glDeleteBuffers(vboMapa);
-        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoEsfera); GL30.glDeleteVertexArrays(vaoMapa);
+        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboPlano); GL15.glDeleteBuffers(vboEsfera); GL15.glDeleteBuffers(vboMapa);
+        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoPlano); GL30.glDeleteVertexArrays(vaoEsfera); GL30.glDeleteVertexArrays(vaoMapa);
         GLFW.glfwDestroyWindow(window); GLFW.glfwTerminate();
     }
 
