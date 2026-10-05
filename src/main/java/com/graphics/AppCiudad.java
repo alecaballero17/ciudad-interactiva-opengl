@@ -90,8 +90,9 @@ public final class AppCiudad {
         GLFW.glfwSwapInterval(1);
         GL.createCapabilities();
         GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glEnable(GL11.GL_CULL_FACE);
-        GL11.glCullFace(GL11.GL_BACK);
+        // La ciudad se observa desde muy cerca y también desde arriba en el minimapa.
+        // Dibujamos ambas caras para que calles y techos nunca desaparezcan por culling.
+        GL11.glDisable(GL11.GL_CULL_FACE);
         crearShaders();
         crearCuboCompleto();
         crearCiudad();
@@ -124,9 +125,9 @@ public final class AppCiudad {
             uniform vec3 uLamparas[9], uFocosPos[2], uFocosDir[2];
             void main() {
                 vec3 n = normalize(normalMundo);
-                vec3 luz = (uNoche ? vec3(0.025, 0.035, 0.075) : vec3(0.18, 0.20, 0.23));
+                vec3 luz = (uNoche ? vec3(0.10, 0.12, 0.20) : vec3(0.48, 0.52, 0.58));
                 float difSol = max(dot(n, normalize(-uSol)), 0.0);
-                luz += (uNoche ? vec3(0.08, 0.10, 0.18) : vec3(1.0, 0.94, 0.82)) * difSol;
+                luz += (uNoche ? vec3(0.10, 0.13, 0.24) : vec3(0.72, 0.68, 0.58)) * difSol;
                 for (int i = 0; i < 9; ++i) {
                     vec3 v = uLamparas[i] - posMundo; float d = length(v);
                     float dif = max(dot(n, normalize(v)), 0.0);
@@ -285,12 +286,18 @@ public final class AppCiudad {
         dibujarEscena(tiempo, vista, proyeccion, camX, camY, camZ);
 
         if (minimapaVisible) {
-            int lado = Math.min(250, Math.min(ancho[0], alto[0]) / 3);
-            GL11.glViewport(ancho[0] - lado - 18, alto[0] - lado - 18, lado, lado);
-            GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-            ortografica(proyeccionMinimapa, -60, 60, -60, 60, 0.1f, 180);
-            mirar(vistaMinimapa, 0, 105, 0, 0, 0, 0, 0, 0, -1);
-            dibujarEscena(tiempo, vistaMinimapa, proyeccionMinimapa, 0, 105, 0);
+            int lado = Math.min(310, Math.min(ancho[0], alto[0]) / 3);
+            int mapaX = ancho[0] - lado - 18, mapaY = alto[0] - lado - 18;
+            // Limpiamos solo el rectángulo del minimapa; la escena principal no se altera.
+            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            GL11.glScissor(mapaX, mapaY, lado, lado);
+            GL11.glClearColor(0.025f, 0.035f, 0.065f, 1);
+            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glViewport(mapaX, mapaY, lado, lado);
+            ortografica(proyeccionMinimapa, -58, 58, -58, 58, 0.1f, 220);
+            mirar(vistaMinimapa, 0, 118, 0, 0, 0, 0, 0, 0, -1);
+            dibujarEscena(tiempo, vistaMinimapa, proyeccionMinimapa, 0, 118, 0);
             GL11.glViewport(0, 0, ancho[0], alto[0]);
         }
     }
@@ -312,7 +319,8 @@ public final class AppCiudad {
             float x = (columna - 5) * CELDA, z = (fila - 5) * CELDA;
             int tipo = CIUDAD[fila][columna];
             if (tipo == 0) {
-                dibujarCubo(x, -0.05f, z, 9.8f, 0.12f, 9.8f, 0, 0.09f, 0.10f, 0.12f, 0, 0, 0);
+                dibujarCubo(x, -0.05f, z, 9.8f, 0.12f, 9.8f, 0, 0.20f, 0.23f, 0.28f, 0, 0, 0);
+                dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
                 float alto = 9 + ((fila * 7 + columna * 5) % 4) * 4;
                 float r = 0.22f + (columna % 3) * .06f, g = .25f + (fila % 3) * .05f;
@@ -326,6 +334,15 @@ public final class AppCiudad {
                 dibujarBanco(x - 1.5f, z + 3.2f, 0);
                 dibujarBanco(x + 3.1f, z - 2.8f, 90);
             }
+        }
+    }
+
+    private void dibujarMarcasViales(float x, float z, int fila, int columna) {
+        // Carriles discontinuos: verticales en los corredores norte-sur y horizontales en los demás.
+        boolean ejeVertical = columna == 3 || columna == 5 || columna == 9;
+        for (float tramo = -3.4f; tramo <= 3.4f; tramo += 3.4f) {
+            if (ejeVertical) dibujarCubo(x, .025f, z + tramo, .16f, .035f, 1.05f, 0, .88f, .78f, .26f, 0, 0, 0);
+            else dibujarCubo(x + tramo, .025f, z, 1.05f, .035f, .16f, 0, .88f, .78f, .26f, 0, 0, 0);
         }
     }
 
@@ -401,17 +418,22 @@ public final class AppCiudad {
     }
 
     private void dibujarAuto() {
-        dibujarCubo(autoX, .75f, autoZ, 2.35f, 1.0f, 4.3f, autoAngulo, .72f, .035f, .025f, 0, 0, 0);
-        float r = (float) Math.toRadians(autoAngulo); float dx = (float) Math.sin(r) * .15f, dz = (float) Math.cos(r) * .15f;
-        dibujarCubo(autoX - dx, 1.48f, autoZ - dz, 1.85f, .75f, 2.05f, autoAngulo, .06f, .20f, .30f, 0, 0, 0);
-        // Marcador turquesa en el capó: hace inequívoca la orientación del auto en el minimapa.
-        dibujarCubo(autoX + (float) Math.sin(r) * 1.55f, 1.36f, autoZ + (float) Math.cos(r) * 1.55f, .48f, .12f, .82f, autoAngulo, .08f, .92f, .88f, .02f, .35f, .30f);
+        float r = (float) Math.toRadians(autoAngulo);
+        float adelanteX = (float) Math.sin(r), adelanteZ = (float) Math.cos(r);
+        // Carrocería: paragolpes, capó, cabina y baúl para una silueta reconocible.
+        dibujarCubo(autoX, .62f, autoZ, 2.45f, .72f, 4.55f, autoAngulo, .83f, .055f, .035f, 0, 0, 0);
+        dibujarCubo(autoX + adelanteX * 1.05f, 1.10f, autoZ + adelanteZ * 1.05f, 2.18f, .42f, 1.62f, autoAngulo, .92f, .075f, .04f, 0, 0, 0);
+        dibujarCubo(autoX - adelanteX * .98f, 1.00f, autoZ - adelanteZ * .98f, 2.24f, .48f, 1.54f, autoAngulo, .70f, .035f, .025f, 0, 0, 0);
+        dibujarCubo(autoX - adelanteX * .08f, 1.45f, autoZ - adelanteZ * .18f, 1.82f, .86f, 2.05f, autoAngulo, .055f, .26f, .39f, .01f, .03f, .05f);
+        // Marcador turquesa sobre el capó: orientación inequívoca en el minimapa.
+        dibujarCubo(autoX + adelanteX * 1.63f, 1.36f, autoZ + adelanteZ * 1.63f, .52f, .10f, .78f, autoAngulo, .08f, .92f, .88f, .02f, .35f, .30f);
         for (float lateral : new float[]{-1.15f, 1.15f}) for (float frontal : new float[]{-1.45f, 1.45f}) {
             float wx = autoX + (float) Math.cos(r) * lateral + (float) Math.sin(r) * frontal;
             float wz = autoZ - (float) Math.sin(r) * lateral + (float) Math.cos(r) * frontal;
-            dibujarCubo(wx, .42f, wz, .38f, .65f, .82f, autoAngulo, .025f, .025f, .025f, 0, 0, 0);
+            dibujarCubo(wx, .39f, wz, .48f, .62f, .90f, autoAngulo, .025f, .028f, .035f, 0, 0, 0);
+            dibujarCubo(wx, .40f, wz, .18f, .30f, .94f, autoAngulo, .55f, .58f, .61f, 0, 0, 0);
         }
-        float fx = autoX + (float) Math.sin(r) * 2.18f, fz = autoZ + (float) Math.cos(r) * 2.18f;
+        float fx = autoX + adelanteX * 2.28f, fz = autoZ + adelanteZ * 2.28f;
         dibujarCubo(fx + (float)Math.cos(r) * .65f, .82f, fz - (float)Math.sin(r) * .65f, .28f, .25f, .12f, autoAngulo, .9f,.9f,.72f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
         dibujarCubo(fx - (float)Math.cos(r) * .65f, .82f, fz + (float)Math.sin(r) * .65f, .28f, .25f, .12f, autoAngulo, .9f,.9f,.72f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
     }
