@@ -600,7 +600,7 @@ public final class AppCiudad {
             if (tipo == 0) {
                 // Acera clara alrededor de una calzada de asfalto oscuro.
                 dibujarCubo(x, -0.04f, z, 9.82f, .13f, 9.82f, 0, .56f, .53f, .46f, 0, 0, 0);
-                dibujarCubo(x, .035f, z, 8.92f, .055f, 8.92f, 0, .12f, .13f, .13f, 0, 0, 0);
+                dibujarCubo(x, .035f, z, 8.92f, .055f, 8.92f, 0, .105f, .11f, .11f, 0, 0, 0);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
                 if (fila == 4 && columna == 4) {
@@ -698,11 +698,18 @@ public final class AppCiudad {
     }
 
     private void dibujarMarcasViales(float x, float z, int fila, int columna) {
-        // Carriles discontinuos: verticales en los corredores norte-sur y horizontales en los demás.
+        // Diseño vial: doble línea amarilla central y líneas blancas en ambos bordes del asfalto.
         boolean ejeVertical = columna == 2 || columna == 5 || columna == 8;
-        for (float tramo = -3.4f; tramo <= 3.4f; tramo += 3.4f) {
-            if (ejeVertical) dibujarCubo(x, .025f, z + tramo, .16f, .035f, 1.05f, 0, .88f, .78f, .26f, 0, 0, 0);
-            else dibujarCubo(x + tramo, .025f, z, 1.05f, .035f, .16f, 0, .88f, .78f, .26f, 0, 0, 0);
+        if (ejeVertical) {
+            dibujarCubo(x - .24f, .075f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x + .24f, .075f, z, .11f, .035f, 8.55f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x - 4.03f, .073f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x + 4.03f, .073f, z, .075f, .028f, 8.55f, 0, .92f, .91f, .84f, 0, 0, 0);
+        } else {
+            dibujarCubo(x, .075f, z - .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x, .075f, z + .24f, 8.55f, .035f, .11f, 0, .96f, .58f, .10f, 0, 0, 0);
+            dibujarCubo(x, .073f, z - 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
+            dibujarCubo(x, .073f, z + 4.03f, 8.55f, .028f, .075f, 0, .92f, .91f, .84f, 0, 0, 0);
         }
     }
 
