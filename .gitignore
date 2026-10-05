@@ -1,0 +1,17 @@
+# Maven
+target/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de ejecución y registros
+*.log
+
+# Archivo de referencia original; no forma parte de la entrega
+opengl-java-class.zip
