@@ -695,10 +695,12 @@ public final class AppCiudad {
         float adelanteX = (float) Math.sin(r), adelanteZ = (float) Math.cos(r);
         float ladoX = (float) Math.cos(r), ladoZ = -(float) Math.sin(r);
         // Carrocería del minibús: blanco, franja azul y zócalo rojo.
-        dibujarCubo(vehiculo.getX(), 1.02f, vehiculo.getZ(), 3.10f, 1.82f, 7.20f, vehiculo.getAngulo(), .88f, .89f, .84f, 0, 0, 0);
+        // Dos volúmenes escalonados: base ancha y cabina más angosta, para evitar una silueta de caja.
+        dibujarCubo(vehiculo.getX(), .86f, vehiculo.getZ(), 3.16f, 1.48f, 7.24f, vehiculo.getAngulo(), .88f, .89f, .84f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), 1.67f, vehiculo.getZ(), 2.88f, .74f, 6.70f, vehiculo.getAngulo(), .91f, .92f, .88f, 0, 0, 0);
         dibujarCubo(vehiculo.getX(), 1.18f, vehiculo.getZ(), 3.16f, .28f, 7.26f, vehiculo.getAngulo(), .04f, .34f, .72f, 0, 0, 0);
         dibujarCubo(vehiculo.getX(), .52f, vehiculo.getZ(), 3.18f, .26f, 7.28f, vehiculo.getAngulo(), .72f, .06f, .07f, 0, 0, 0);
-        dibujarCubo(vehiculo.getX(), 2.00f, vehiculo.getZ() - adelanteZ * .08f, 3.00f, .32f, 6.85f, vehiculo.getAngulo(), .05f, .08f, .12f, 0, 0, 0);
+        dibujarCubo(vehiculo.getX(), 2.08f, vehiculo.getZ(), 2.72f, .18f, 6.28f, vehiculo.getAngulo(), .045f, .075f, .11f, 0, 0, 0);
 
         // Parabrisas delantero y rótulo de línea estilizado.
         float frenteX = vehiculo.getX() + adelanteX * 3.62f, frenteZ = vehiculo.getZ() + adelanteZ * 3.62f;
@@ -708,10 +710,12 @@ public final class AppCiudad {
         // Parte trasera legible desde la cámara de conducción: luneta, ruta 72, luces y paragolpes.
         float atrasX = vehiculo.getX() - adelanteX * 3.62f, atrasZ = vehiculo.getZ() - adelanteZ * 3.62f;
         float cartelX = atrasX - adelanteX * .07f, cartelZ = atrasZ - adelanteZ * .07f;
-        dibujarCubo(atrasX, 1.66f, atrasZ, 2.74f, .88f, .12f, vehiculo.getAngulo(), .045f, .16f, .24f, .01f, .025f, .04f);
-        dibujarCubo(atrasX, 2.30f, atrasZ, 1.42f, .52f, .14f, vehiculo.getAngulo(), .025f, .035f, .05f, 0, 0, 0);
-        dibujarDigitoRuta(7, -.37f, 2.30f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo());
-        dibujarDigitoRuta(2, .37f, 2.30f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo());
+        dibujarCubo(atrasX, 1.62f, atrasZ, 2.72f, .76f, .12f, vehiculo.getAngulo(), .045f, .16f, .24f, .01f, .025f, .04f);
+        dibujarCubo(atrasX - adelanteX * .07f, 1.62f, atrasZ - adelanteZ * .07f, .11f, .78f, .08f, vehiculo.getAngulo(), .82f, .84f, .80f, 0, 0, 0);
+        dibujarCubo(atrasX, 2.22f, atrasZ, 1.42f, .44f, .14f, vehiculo.getAngulo(), .025f, .035f, .05f, 0, 0, 0);
+        // En la parte trasera se invierte la geometría y el orden para que se lea 72, no su reflejo.
+        dibujarDigitoRuta(7, .37f, 2.22f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo(), true);
+        dibujarDigitoRuta(2, -.37f, 2.22f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo(), true);
         dibujarCubo(atrasX, 1.10f, atrasZ, 3.20f, .26f, .14f, vehiculo.getAngulo(), .04f, .34f, .72f, 0, 0, 0);
         dibujarCubo(atrasX, .52f, atrasZ, 3.22f, .28f, .16f, vehiculo.getAngulo(), .72f, .06f, .07f, .03f, 0, 0);
         dibujarCubo(atrasX, .35f, atrasZ, 3.30f, .24f, .22f, vehiculo.getAngulo(), .10f, .12f, .15f, 0, 0, 0);
@@ -743,12 +747,17 @@ public final class AppCiudad {
     }
 
     /** Dibuja un dígito de siete segmentos en el cartel trasero del minibús. */
-    private void dibujarDigitoRuta(int digito, float lateral, float centroY, float x, float z, float ladoX, float ladoZ, float angulo) {
+    private void dibujarDigitoRuta(int digito, float lateral, float centroY, float x, float z, float ladoX, float ladoZ, float angulo, boolean espejado) {
         boolean[] segmentos = switch (digito) {
             case 7 -> new boolean[]{true, true, true, false, false, false, false};
             case 2 -> new boolean[]{true, true, false, true, true, false, true};
             default -> new boolean[7];
         };
+        // Una cara trasera se observa desde el sentido opuesto al frente del vehículo.
+        if (espejado) {
+            boolean temporal = segmentos[1]; segmentos[1] = segmentos[5]; segmentos[5] = temporal;
+            temporal = segmentos[2]; segmentos[2] = segmentos[4]; segmentos[4] = temporal;
+        }
         float[] alturaHorizontal = {.23f, 0, -.23f};
         if (segmentos[0]) dibujarSegmentoRuta(x, z, lateral, centroY + alturaHorizontal[0], true, ladoX, ladoZ, angulo);
         if (segmentos[1]) dibujarSegmentoRuta(x, z, lateral + .18f, centroY + .115f, false, ladoX, ladoZ, angulo);
