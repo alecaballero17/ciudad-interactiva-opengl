@@ -705,6 +705,22 @@ public final class AppCiudad {
         dibujarCubo(frenteX, 1.70f, frenteZ, 2.72f, .82f, .10f, vehiculo.getAngulo(), .06f, .22f, .32f, .01f, .03f, .05f);
         dibujarCubo(frenteX, 2.20f, frenteZ, 1.22f, .23f, .12f, vehiculo.getAngulo(), .96f, .75f, .14f, .16f, .10f, .01f);
 
+        // Parte trasera legible desde la cámara de conducción: luneta, ruta 72, luces y paragolpes.
+        float atrasX = vehiculo.getX() - adelanteX * 3.62f, atrasZ = vehiculo.getZ() - adelanteZ * 3.62f;
+        float cartelX = atrasX - adelanteX * .07f, cartelZ = atrasZ - adelanteZ * .07f;
+        dibujarCubo(atrasX, 1.66f, atrasZ, 2.74f, .88f, .12f, vehiculo.getAngulo(), .045f, .16f, .24f, .01f, .025f, .04f);
+        dibujarCubo(atrasX, 2.30f, atrasZ, 1.42f, .52f, .14f, vehiculo.getAngulo(), .025f, .035f, .05f, 0, 0, 0);
+        dibujarDigitoRuta(7, -.37f, 2.30f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo());
+        dibujarDigitoRuta(2, .37f, 2.30f, cartelX, cartelZ, ladoX, ladoZ, vehiculo.getAngulo());
+        dibujarCubo(atrasX, 1.10f, atrasZ, 3.20f, .26f, .14f, vehiculo.getAngulo(), .04f, .34f, .72f, 0, 0, 0);
+        dibujarCubo(atrasX, .52f, atrasZ, 3.22f, .28f, .16f, vehiculo.getAngulo(), .72f, .06f, .07f, .03f, 0, 0);
+        dibujarCubo(atrasX, .35f, atrasZ, 3.30f, .24f, .22f, vehiculo.getAngulo(), .10f, .12f, .15f, 0, 0, 0);
+        for (float lateral : new float[]{-.98f, .98f}) {
+            float luzX = atrasX + ladoX * lateral - adelanteX * .09f;
+            float luzZ = atrasZ + ladoZ * lateral - adelanteZ * .09f;
+            dibujarCubo(luzX, .83f, luzZ, .38f, .25f, .10f, vehiculo.getAngulo(), .88f, .035f, .025f, .22f, .004f, .002f);
+        }
+
         // Ventanas laterales y puerta de acceso.
         for (float lateral : new float[]{-1.57f, 1.57f}) for (float longitudinal : new float[]{-2.15f, -1.02f, .12f, 1.26f, 2.35f}) {
             float x = vehiculo.getX() + ladoX * lateral + adelanteX * longitudinal;
@@ -724,6 +740,28 @@ public final class AppCiudad {
         float fx = vehiculo.getX() + adelanteX * 3.68f, fz = vehiculo.getZ() + adelanteZ * 3.68f;
         dibujarCubo(fx + ladoX * .86f, .88f, fz + ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
         dibujarCubo(fx - ladoX * .86f, .88f, fz - ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
+    }
+
+    /** Dibuja un dígito de siete segmentos en el cartel trasero del minibús. */
+    private void dibujarDigitoRuta(int digito, float lateral, float centroY, float x, float z, float ladoX, float ladoZ, float angulo) {
+        boolean[] segmentos = switch (digito) {
+            case 7 -> new boolean[]{true, true, true, false, false, false, false};
+            case 2 -> new boolean[]{true, true, false, true, true, false, true};
+            default -> new boolean[7];
+        };
+        float[] alturaHorizontal = {.23f, 0, -.23f};
+        if (segmentos[0]) dibujarSegmentoRuta(x, z, lateral, centroY + alturaHorizontal[0], true, ladoX, ladoZ, angulo);
+        if (segmentos[1]) dibujarSegmentoRuta(x, z, lateral + .18f, centroY + .115f, false, ladoX, ladoZ, angulo);
+        if (segmentos[2]) dibujarSegmentoRuta(x, z, lateral + .18f, centroY - .115f, false, ladoX, ladoZ, angulo);
+        if (segmentos[3]) dibujarSegmentoRuta(x, z, lateral, centroY - alturaHorizontal[0], true, ladoX, ladoZ, angulo);
+        if (segmentos[4]) dibujarSegmentoRuta(x, z, lateral - .18f, centroY - .115f, false, ladoX, ladoZ, angulo);
+        if (segmentos[5]) dibujarSegmentoRuta(x, z, lateral - .18f, centroY + .115f, false, ladoX, ladoZ, angulo);
+        if (segmentos[6]) dibujarSegmentoRuta(x, z, lateral, centroY, true, ladoX, ladoZ, angulo);
+    }
+
+    private void dibujarSegmentoRuta(float baseX, float baseZ, float lateral, float y, boolean horizontal, float ladoX, float ladoZ, float angulo) {
+        float x = baseX + ladoX * lateral, z = baseZ + ladoZ * lateral;
+        dibujarCubo(x, y, z, horizontal ? .28f : .065f, horizontal ? .055f : .22f, .07f, angulo, .98f, .76f, .14f, .22f, .12f, .01f);
     }
 
     private void actualizarFocos() {
