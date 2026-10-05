@@ -42,7 +42,7 @@ public final class AppCiudad {
     };
 
     private long window;
-    private int programa, programaMapa, vaoCubo, vboCubo, vaoMapa, vboMapa;
+    private int programa, programaMapa, vaoCubo, vboCubo, vaoEsfera, vboEsfera, verticesEsfera, vaoMapa, vboMapa;
     private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche, uModoMapa;
     private int uLamparas, uFocosPos, uFocosDir, uFocosActivos;
     private final List<Caja> edificios = new ArrayList<>();
@@ -95,6 +95,7 @@ public final class AppCiudad {
         GL11.glDisable(GL11.GL_CULL_FACE);
         crearShaders();
         crearCuboCompleto();
+        crearEsfera();
         crearMapaUI();
         crearCiudad();
         crearLamparas();
@@ -224,6 +225,41 @@ public final class AppCiudad {
         GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 3L * Float.BYTES);
         GL20.glEnableVertexAttribArray(0); GL20.glEnableVertexAttribArray(1);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0); GL30.glBindVertexArray(0);
+    }
+
+    /** Esfera con normales para el tanque redondeado del carrito de somó. */
+    private void crearEsfera() {
+        int sectores = 24, anillos = 16;
+        float[] datos = new float[sectores * anillos * 6 * 6];
+        int i = 0;
+        for (int anillo = 0; anillo < anillos; anillo++) {
+            float v0 = (float) anillo / anillos, v1 = (float) (anillo + 1) / anillos;
+            float phi0 = (float) (Math.PI * (v0 - .5)), phi1 = (float) (Math.PI * (v1 - .5));
+            for (int sector = 0; sector < sectores; sector++) {
+                float u0 = (float) sector / sectores, u1 = (float) (sector + 1) / sectores;
+                i = agregarVerticeEsfera(datos, i, u0, phi0); i = agregarVerticeEsfera(datos, i, u1, phi0); i = agregarVerticeEsfera(datos, i, u1, phi1);
+                i = agregarVerticeEsfera(datos, i, u0, phi0); i = agregarVerticeEsfera(datos, i, u1, phi1); i = agregarVerticeEsfera(datos, i, u0, phi1);
+            }
+        }
+        verticesEsfera = i / 6;
+        vaoEsfera = GL30.glGenVertexArrays(); vboEsfera = GL15.glGenBuffers();
+        GL30.glBindVertexArray(vaoEsfera); GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboEsfera);
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(i); buffer.put(datos, 0, i).flip();
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STATIC_DRAW);
+        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 0);
+        GL20.glVertexAttribPointer(1, 3, GL11.GL_FLOAT, false, 6 * Float.BYTES, 3L * Float.BYTES);
+        GL20.glEnableVertexAttribArray(0); GL20.glEnableVertexAttribArray(1);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0); GL30.glBindVertexArray(0);
+    }
+
+    private int agregarVerticeEsfera(float[] datos, int i, float u, float phi) {
+        float theta = (float) (Math.PI * 2 * u);
+        float x = (float) (Math.cos(phi) * Math.cos(theta));
+        float y = (float) Math.sin(phi);
+        float z = (float) (Math.cos(phi) * Math.sin(theta));
+        datos[i++] = x; datos[i++] = y; datos[i++] = z;
+        datos[i++] = x; datos[i++] = y; datos[i++] = z;
+        return i;
     }
 
     private void crearCiudad() {
@@ -385,11 +421,11 @@ public final class AppCiudad {
                 .96f, .98f, 1.0f);
 
         float pulso = .042f + .008f * (float) Math.sin(tiempo * 4.0f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .12f, .08f, .16f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .12f, .08f, .16f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .04f, .18f, .52f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .04f, .18f, .52f);
         float nucleo = pulso * .52f;
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, .96f, .22f, .78f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, .96f, .22f, .78f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, .98f, .68f, .08f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, .98f, .68f, .08f);
         indice = agregarNorteMapa(vertices, indice);
 
         FloatBuffer datos = BufferUtils.createFloatBuffer(indice);
@@ -631,11 +667,26 @@ public final class AppCiudad {
     }
 
     private void dibujarDestino(float tiempo) {
-        float flotacion = 3.4f + (float) Math.sin(tiempo * 3.2f) * .55f;
-        float pulso = .75f + .25f * (float) Math.sin(tiempo * 4.0f);
-        dibujarCubo(destinoX, 1.1f, destinoZ, .18f, 2.2f, .18f, 0, .22f, .22f, .25f, .2f, .05f, .7f);
-        dibujarCubo(destinoX, flotacion, destinoZ, 1.25f * pulso, 1.25f * pulso, 1.25f * pulso, tiempo * 70, .68f, .16f, .95f, .8f, .12f, 1.0f);
-        dibujarCubo(destinoX, .24f, destinoZ, 2.3f, .09f, 2.3f, 0, .45f, .08f, .62f, .38f, .03f, .58f);
+        float vaiven = (float) Math.sin(tiempo * 2.4f) * .12f;
+        float pulso = .76f + .15f * (float) Math.sin(tiempo * 3.5f);
+        // Halo de misión bajo el carrito: comunica que es un destino interactivo.
+        dibujarCubo(destinoX, .035f, destinoZ, 4.6f * pulso, .07f, 4.6f * pulso, tiempo * 28, .98f, .48f, .08f, .55f, .17f, .01f);
+        // Chasis azul, ruedas y manillar del carrito.
+        dibujarCubo(destinoX, .48f + vaiven, destinoZ, 3.10f, .22f, 2.15f, 0, .04f, .23f, .62f, 0, 0, 0);
+        dibujarCubo(destinoX, .78f + vaiven, destinoZ - .78f, 3.10f, .18f, .16f, 0, .06f, .30f, .74f, 0, 0, 0);
+        dibujarCubo(destinoX, 1.05f + vaiven, destinoZ + 1.12f, .18f, 1.25f, .18f, 0, .05f, .28f, .70f, 0, 0, 0);
+        dibujarCubo(destinoX, 1.62f + vaiven, destinoZ + 1.55f, 2.20f, .16f, .16f, 0, .05f, .28f, .70f, 0, 0, 0);
+        for (float lateral : new float[]{-1.42f, 1.42f}) {
+            dibujarCubo(destinoX + lateral, .42f + vaiven, destinoZ - .64f, .42f, .72f, .42f, 0, .025f, .03f, .04f, 0, 0, 0);
+            dibujarCubo(destinoX + lateral, .42f + vaiven, destinoZ + .68f, .42f, .72f, .42f, 0, .025f, .03f, .04f, 0, 0, 0);
+        }
+        // Tanque amarillo de somó y detalles verdes originales.
+        dibujarEsfera(destinoX, 2.05f + vaiven, destinoZ - .10f, 1.46f, 1.46f, 1.46f, .95f, .63f, .06f, .12f, .06f, 0);
+        dibujarCubo(destinoX, 2.02f + vaiven, destinoZ - 1.46f, 2.05f, .23f, .10f, 0, .05f, .36f, .16f, 0, 0, 0);
+        dibujarCubo(destinoX, 3.45f + vaiven, destinoZ - .10f, .72f, .16f, .72f, 0, .96f, .80f, .26f, .16f, .09f, .01f);
+        // Vasos sobre el tanque.
+        dibujarCubo(destinoX - .35f, 3.85f + vaiven, destinoZ - .10f, .34f, .72f, .34f, 0, .92f, .94f, .90f, 0, 0, 0);
+        dibujarCubo(destinoX + .35f, 3.85f + vaiven, destinoZ - .10f, .34f, .72f, .34f, 0, .92f, .94f, .90f, 0, 0, 0);
     }
 
     private void dibujarAuto() {
@@ -676,10 +727,18 @@ public final class AppCiudad {
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 36);
     }
 
+    private void dibujarEsfera(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b, float er, float eg, float eb) {
+        float[] modelo = modelo(x, y, z, sx, sy, sz, 0);
+        GL20.glUniformMatrix4fv(uModelo, false, modelo); GL20.glUniform3f(uColor, r, g, b); GL20.glUniform3f(uEmision, er, eg, eb);
+        GL30.glBindVertexArray(vaoEsfera);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, verticesEsfera);
+        GL30.glBindVertexArray(vaoCubo);
+    }
+
     private void liberar() {
         GL20.glDeleteProgram(programa); GL20.glDeleteProgram(programaMapa);
-        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboMapa);
-        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoMapa);
+        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboEsfera); GL15.glDeleteBuffers(vboMapa);
+        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoEsfera); GL30.glDeleteVertexArrays(vaoMapa);
         GLFW.glfwDestroyWindow(window); GLFW.glfwTerminate();
     }
 
