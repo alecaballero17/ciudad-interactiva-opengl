@@ -351,9 +351,10 @@ public final class AppCiudad {
     private void dibujarMapaUI(float tiempo) {
         float[] vertices = new float[32768];
         int indice = 0;
-        // Panel con borde: el eje Z negativo queda arriba (norte).
-        indice = agregarRect(vertices, indice, -.97f, -.97f, .97f, .97f, .015f, .025f, .050f);
-        indice = agregarRect(vertices, indice, -.935f, -.935f, .935f, .935f, .040f, .065f, .105f);
+        // Panel cuadrado de alto contraste; el eje Z negativo queda arriba (norte).
+        indice = agregarRect(vertices, indice, -.97f, -.97f, .97f, .97f, .018f, .014f, .020f);
+        indice = agregarRect(vertices, indice, -.925f, -.925f, .925f, .925f, .42f, .40f, .34f);
+        indice = agregarMarcoMapa(vertices, indice);
         for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
             float x = (columna - 5) * CELDA / 62.0f;
             float y = -((fila - 5) * CELDA) / 62.0f;
@@ -373,22 +374,23 @@ public final class AppCiudad {
         indice = agregarRutaMapa(vertices, indice, xAuto, yAuto, xDestino, yDestino);
         // Auto: sombra, carrocería, techo y faros; todos rotan junto con el vehículo.
         indice = agregarRectOrientado(vertices, indice, xAuto + .008f, yAuto - .008f, frenteX, frenteY, ladoX, ladoY, .050f, .030f, .008f, .012f, .022f);
-        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .047f, .029f, .08f, .84f, .89f);
-        indice = agregarRectOrientado(vertices, indice, xAuto - frenteX * .005f, yAuto - frenteY * .005f, frenteX, frenteY, ladoX, ladoY, .020f, .022f, .08f, .32f, .50f);
+        indice = agregarRectOrientado(vertices, indice, xAuto, yAuto, frenteX, frenteY, ladoX, ladoY, .047f, .029f, .20f, .66f, .95f);
+        indice = agregarRectOrientado(vertices, indice, xAuto - frenteX * .005f, yAuto - frenteY * .005f, frenteX, frenteY, ladoX, ladoY, .020f, .022f, .82f, .92f, 1.0f);
         indice = agregarRectOrientado(vertices, indice, xAuto + frenteX * .038f, yAuto + frenteY * .038f, frenteX, frenteY, ladoX, ladoY, .006f, .021f, .95f, .95f, .72f);
         // Flecha sutil encima del auto para que la orientación sea inequívoca.
         indice = agregarTriangulo(vertices, indice,
                 xAuto + frenteX * .079f, yAuto + frenteY * .079f,
                 xAuto + frenteX * .045f + ladoX * .018f, yAuto + frenteY * .045f + ladoY * .018f,
                 xAuto + frenteX * .045f - ladoX * .018f, yAuto + frenteY * .045f - ladoY * .018f,
-                .95f, .98f, 1.0f);
+                .96f, .98f, 1.0f);
 
         float pulso = .042f + .008f * (float) Math.sin(tiempo * 4.0f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .55f, .05f, .70f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .55f, .05f, .70f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .12f, .08f, .16f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .12f, .08f, .16f);
         float nucleo = pulso * .52f;
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, 1.0f, .28f, .93f);
-        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, 1.0f, .28f, .93f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino + nucleo, yDestino, xDestino, yDestino - nucleo, .96f, .22f, .78f);
+        indice = agregarTriangulo(vertices, indice, xDestino, yDestino + nucleo, xDestino - nucleo, yDestino, xDestino, yDestino - nucleo, .96f, .22f, .78f);
+        indice = agregarNorteMapa(vertices, indice);
 
         FloatBuffer datos = BufferUtils.createFloatBuffer(indice);
         datos.put(vertices, 0, indice).flip();
@@ -414,13 +416,13 @@ public final class AppCiudad {
     }
 
     private int agregarCalleMapa(float[] datos, int i, float x, float y, float mitad, int columna) {
-        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .095f, .115f, .155f);
+        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .018f, .017f, .020f);
         float borde = mitad * .82f;
-        i = agregarRect(datos, i, x - borde, y - borde, x + borde, y + borde, .155f, .185f, .235f);
+        i = agregarRect(datos, i, x - borde, y - borde, x + borde, y + borde, .075f, .073f, .070f);
         boolean vertical = columna == 3 || columna == 5 || columna == 9;
         for (float d = -mitad * .55f; d <= mitad * .55f; d += mitad * .55f) {
-            if (vertical) i = agregarRect(datos, i, x - .006f, y + d - .018f, x + .006f, y + d + .018f, .95f, .70f, .20f);
-            else i = agregarRect(datos, i, x + d - .018f, y - .006f, x + d + .018f, y + .006f, .95f, .70f, .20f);
+            if (vertical) i = agregarRect(datos, i, x - .006f, y + d - .018f, x + .006f, y + d + .018f, .82f, .80f, .67f);
+            else i = agregarRect(datos, i, x + d - .018f, y - .006f, x + d + .018f, y + .006f, .82f, .80f, .67f);
         }
         return i;
     }
@@ -429,21 +431,21 @@ public final class AppCiudad {
         float tono = .34f + ((fila + columna) % 3) * .06f;
         float sesgoX = ((fila * 3 + columna) % 2 == 0) ? -.009f : .009f;
         float sesgoY = ((fila + columna * 2) % 2 == 0) ? .007f : -.007f;
-        i = agregarRect(datos, i, x - mitad + .010f, y - mitad - .010f, x + mitad + .010f, y + mitad - .010f, .018f, .035f, .070f);
-        i = agregarRect(datos, i, x - mitad * .83f + sesgoX, y - mitad * .83f + sesgoY, x + mitad * .83f + sesgoX, y + mitad * .83f + sesgoY, .055f, tono * .76f, tono);
-        i = agregarRect(datos, i, x - mitad * .58f + sesgoX, y - mitad * .58f + sesgoY, x + mitad * .58f + sesgoX, y + mitad * .58f + sesgoY, .12f, tono, Math.min(.92f, tono + .18f));
+        i = agregarRect(datos, i, x - mitad + .010f, y - mitad - .010f, x + mitad + .010f, y + mitad - .010f, .025f, .024f, .028f);
+        i = agregarRect(datos, i, x - mitad * .83f + sesgoX, y - mitad * .83f + sesgoY, x + mitad * .83f + sesgoX, y + mitad * .83f + sesgoY, tono * .73f, tono * .72f, tono * .66f);
+        i = agregarRect(datos, i, x - mitad * .58f + sesgoX, y - mitad * .58f + sesgoY, x + mitad * .58f + sesgoX, y + mitad * .58f + sesgoY, Math.min(.92f, tono + .28f), Math.min(.90f, tono + .26f), Math.min(.84f, tono + .20f));
         // Azotea y detalles de fachada: generan volumen sin saturar el panel.
-        i = agregarRect(datos, i, x - mitad * .64f + sesgoX, y + mitad * .38f + sesgoY, x + mitad * .64f + sesgoX, y + mitad * .53f + sesgoY, .25f, .72f, .90f);
-        return agregarRect(datos, i, x - mitad * .14f + sesgoX, y - mitad * .42f + sesgoY, x + mitad * .14f + sesgoX, y + mitad * .28f + sesgoY, .07f, .25f, .42f);
+        i = agregarRect(datos, i, x - mitad * .64f + sesgoX, y + mitad * .38f + sesgoY, x + mitad * .64f + sesgoX, y + mitad * .53f + sesgoY, .74f, .74f, .68f);
+        return agregarRect(datos, i, x - mitad * .14f + sesgoX, y - mitad * .42f + sesgoY, x + mitad * .14f + sesgoX, y + mitad * .28f + sesgoY, .48f, .50f, .50f);
     }
 
     private int agregarParqueMapa(float[] datos, int i, float x, float y, float mitad, int fila, int columna) {
-        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .025f, .16f, .07f);
-        i = agregarRect(datos, i, x - mitad * .82f, y - mitad * .82f, x + mitad * .82f, y + mitad * .82f, .08f, .42f, .16f);
+        i = agregarRect(datos, i, x - mitad, y - mitad, x + mitad, y + mitad, .018f, .11f, .042f);
+        i = agregarRect(datos, i, x - mitad * .82f, y - mitad * .82f, x + mitad * .82f, y + mitad * .82f, .06f, .35f, .13f);
         float variacion = ((fila + columna) % 2 == 0) ? .018f : -.018f;
-        i = agregarRect(datos, i, x - .042f + variacion, y + .005f, x - .006f + variacion, y + .041f, .42f, .84f, .20f);
-        i = agregarRect(datos, i, x + .014f - variacion, y - .043f, x + .050f - variacion, y - .007f, .42f, .84f, .20f);
-        return agregarRect(datos, i, x - .018f, y - .013f, x + .018f, y + .013f, .72f, .52f, .20f);
+        i = agregarRect(datos, i, x - .042f + variacion, y + .005f, x - .006f + variacion, y + .041f, .28f, .74f, .16f);
+        i = agregarRect(datos, i, x + .014f - variacion, y - .043f, x + .050f - variacion, y - .007f, .28f, .74f, .16f);
+        return agregarRect(datos, i, x - .018f, y - .013f, x + .018f, y + .013f, .70f, .62f, .34f);
     }
 
     private int agregarRutaMapa(float[] datos, int i, float x1, float y1, float x2, float y2) {
@@ -453,7 +455,7 @@ public final class AppCiudad {
         float frenteX = dx / distancia, frenteY = dy / distancia;
         float ladoX = -frenteY, ladoY = frenteX;
         for (float t = .11f; t < .90f; t += .11f) {
-            i = agregarRectOrientado(datos, i, x1 + dx * t, y1 + dy * t, frenteX, frenteY, ladoX, ladoY, .015f, .006f, .75f, .25f, .88f);
+            i = agregarRectOrientado(datos, i, x1 + dx * t, y1 + dy * t, frenteX, frenteY, ladoX, ladoY, .015f, .006f, .94f, .20f, .72f);
         }
         return i;
     }
@@ -465,6 +467,24 @@ public final class AppCiudad {
         float x4 = x - frenteX * medioLargo + ladoX * medioAncho, y4 = y - frenteY * medioLargo + ladoY * medioAncho;
         i = agregarTriangulo(datos, i, x1, y1, x2, y2, x3, y3, r, g, b);
         return agregarTriangulo(datos, i, x1, y1, x3, y3, x4, y4, r, g, b);
+    }
+
+    private int agregarMarcoMapa(float[] datos, int i) {
+        float rosaR = .86f, rosaG = .30f, rosaB = .74f;
+        i = agregarRect(datos, i, -.965f, .935f, .965f, .965f, rosaR, rosaG, rosaB);
+        i = agregarRect(datos, i, -.965f, -.965f, .965f, -.935f, rosaR, rosaG, rosaB);
+        i = agregarRect(datos, i, -.965f, -.965f, -.935f, .965f, rosaR, rosaG, rosaB);
+        return agregarRect(datos, i, .935f, -.965f, .965f, .965f, rosaR, rosaG, rosaB);
+    }
+
+    /** Insignia N construida con rectángulos, sin necesidad de una fuente o textura. */
+    private int agregarNorteMapa(float[] datos, int i) {
+        i = agregarRect(datos, i, -.105f, .815f, .105f, .940f, .015f, .014f, .020f);
+        float blanco = .96f;
+        i = agregarRect(datos, i, -.062f, .838f, -.045f, .914f, blanco, blanco, blanco);
+        i = agregarRect(datos, i, .045f, .838f, .062f, .914f, blanco, blanco, blanco);
+        i = agregarRectOrientado(datos, i, -.014f, .876f, .707f, .707f, -.707f, .707f, .052f, .009f, blanco, blanco, blanco);
+        return agregarRectOrientado(datos, i, .014f, .876f, .707f, .707f, -.707f, .707f, .052f, .009f, blanco, blanco, blanco);
     }
 
     private int agregarTriangulo(float[] datos, int i, float x1, float y1, float x2, float y2, float x3, float y3, float r, float g, float b) {
