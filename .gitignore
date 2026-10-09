@@ -13,5 +13,8 @@ Thumbs.db
 # Archivos de ejecución y registros
 *.log
 
+# Archivos temporales de elaboración y revisión de documentos
+.docx-work/
+
 # Archivo de referencia original; no forma parte de la entrega
 opengl-java-class.zip

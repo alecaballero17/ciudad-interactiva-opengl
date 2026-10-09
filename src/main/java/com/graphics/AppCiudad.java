@@ -1,5 +1,12 @@
 package com.graphics;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +17,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
@@ -20,10 +28,10 @@ public final class AppCiudad {
     private static final int ANCHO = 1280, ALTO = 720;
     private static final int TAMANO_CIUDAD = 11;
     private static final float CELDA = 10.0f, LIMITE = 55.0f;
-    // Huella de conducción: compacta alrededor de los ejes para no cerrar carriles estrechos.
-    // La carrocería conserva su escala visual, pero esta AABB evita paredes invisibles al maniobrar.
-    private static final float COLISION_MITAD_ANCHO = .42f, COLISION_MITAD_LARGO = .78f;
-    private static final float VELOCIDAD = 15.0f, GIRO = 115.0f;
+    // Tres apoyos circulares describen al minibús mejor que una caja rígida en las esquinas.
+    private static final float RADIO_COLISION = 1.18f, EXTREMO_COLISION = 2.25f;
+    private static final float VELOCIDAD_MAXIMA = 18.0f, VELOCIDAD_REVERSA = 7.0f, ACELERACION = 10.0f;
+    private static final float FRENADO = 24.0f, ROZAMIENTO = 4.0f, GIRO = 115.0f;
     private static final float RADIO_ENTREGA = 3.5f;
     private static final float[][] INTERSECCIONES = {
         {-30, -30}, {0, -30}, {30, -30}, {-30, 30}, {0, 30}, {30, 30}
@@ -45,7 +53,7 @@ public final class AppCiudad {
     };
 
     private long window;
-    private int programa, programaMapa, vaoCubo, vboCubo, vaoPlano, vboPlano, vaoEsfera, vboEsfera, verticesEsfera, vaoMapa, vboMapa;
+    private int programa, programaMapa, programaHud, vaoCubo, vboCubo, vaoPlano, vboPlano, vaoEsfera, vboEsfera, verticesEsfera, vaoMapa, vboMapa, vaoHud, vboHud, texturaHud, uTexturaHud;
     private int uModelo, uVista, uProyeccion, uColor, uEmision, uCamara, uSol, uNoche, uModoMapa;
     private int uLamparas, uFocosPos, uFocosDir, uFocosActivos;
     private final List<Caja> edificios = new ArrayList<>();
@@ -54,11 +62,18 @@ public final class AppCiudad {
     private final float[] posicionLamparas = new float[9 * 3];
     private final float[] posicionFocos = new float[2 * 3], direccionFocos = new float[2 * 3];
     private final List<float[]> calles = new ArrayList<>();
+    /** Vehículos de tránsito que usan rutas predefinidas sobre la red vial. */
+    private final List<VehiculoAutonomo> trafico = new ArrayList<>();
     private final Random aleatorio = new Random();
     private final Vehiculo vehiculo = new Vehiculo(0.0f, -48.0f);
     private float destinoX, destinoZ;
+    private float vistaCamaraX, vistaCamaraZ, vistaObjetivoX, vistaObjetivoZ;
+    private float camaraSuaveX, camaraSuaveY, camaraSuaveZ;
+    private float objetivoSuaveX, objetivoSuaveY, objetivoSuaveZ;
     private int entregasCompletadas;
-    private boolean noche, focos = true, camaraOrbital, minimapaVisible = true;
+    private boolean noche, focos = true, camaraOrbital, minimapaVisible = true, camaraEnSeguimiento, camaraSuaveInicializada;
+    private static final int HUD_ANCHO = 460, HUD_ALTO = 176;
+    private final BufferedImage imagenHud = new BufferedImage(HUD_ANCHO, HUD_ALTO, BufferedImage.TYPE_INT_ARGB);
 
     public static void main(String[] args) { new AppCiudad().run(); }
 
@@ -84,7 +99,10 @@ public final class AppCiudad {
             if (key == GLFW.GLFW_KEY_ESCAPE) GLFW.glfwSetWindowShouldClose(w, true);
             if (key == GLFW.GLFW_KEY_N) noche = !noche;
             if (key == GLFW.GLFW_KEY_F) focos = !focos;
-            if (key == GLFW.GLFW_KEY_C) camaraOrbital = !camaraOrbital;
+            if (key == GLFW.GLFW_KEY_C) {
+                camaraOrbital = !camaraOrbital;
+                camaraSuaveInicializada = false;
+            }
             if (key == GLFW.GLFW_KEY_M) minimapaVisible = !minimapaVisible;
             if (key == GLFW.GLFW_KEY_R) reiniciarAuto();
         });
@@ -101,7 +119,9 @@ public final class AppCiudad {
         crearPlanoPavimento();
         crearEsfera();
         crearMapaUI();
+        crearHudUI();
         crearCiudad();
+        crearTrafico();
         crearLamparas();
         generarNuevoDestino();
         actualizarTitulo();
@@ -135,20 +155,21 @@ public final class AppCiudad {
                     return;
                 }
                 vec3 n = normalize(normalMundo);
-                vec3 luz = (uNoche ? vec3(0.10, 0.12, 0.20) : vec3(0.48, 0.52, 0.58));
+                // Noche realmente oscura: las fuentes puntuales conservan su contraste sin lavar la escena.
+                vec3 luz = (uNoche ? vec3(0.025, 0.035, 0.075) : vec3(0.48, 0.52, 0.58));
                 float difSol = max(dot(n, normalize(-uSol)), 0.0);
-                luz += (uNoche ? vec3(0.10, 0.13, 0.24) : vec3(0.72, 0.68, 0.58)) * difSol;
+                luz += (uNoche ? vec3(0.025, 0.035, 0.085) : vec3(0.72, 0.68, 0.58)) * difSol;
                 for (int i = 0; i < 9; ++i) {
                     vec3 v = uLamparas[i] - posMundo; float d = length(v);
                     float dif = max(dot(n, normalize(v)), 0.0);
-                    luz += vec3(1.0, 0.62, 0.22) * dif / (1.0 + 0.045*d + 0.018*d*d);
+                    luz += vec3(0.90, 0.50, 0.16) * dif / (1.0 + 0.024*d + 0.005*d*d);
                 }
                 if (uFocosActivos) for (int i = 0; i < 2; ++i) {
                     vec3 v = uFocosPos[i] - posMundo; float d = length(v);
                     vec3 haciaFragmento = normalize(posMundo - uFocosPos[i]);
-                    float cono = smoothstep(0.72, 0.91, dot(normalize(uFocosDir[i]), haciaFragmento));
+                    float cono = smoothstep(0.42, 0.78, dot(normalize(uFocosDir[i]), haciaFragmento));
                     float dif = max(dot(n, normalize(v)), 0.0);
-                    luz += vec3(0.92, 0.95, 1.0) * dif * cono / (1.0 + 0.09*d + 0.025*d*d);
+                    luz += vec3(1.10, 1.16, 1.28) * dif * cono / (1.0 + 0.032*d + 0.007*d*d);
                 }
                 fragColor = vec4(uColor * luz + uEmision, 1.0);
             }
@@ -210,6 +231,45 @@ public final class AppCiudad {
         GL20.glEnableVertexAttribArray(1);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
+    }
+
+    /** Interfaz de texto real, dibujada en una textura para no depender de letras de bloques. */
+    private void crearHudUI() {
+        String vertice = """
+            #version 330 core
+            layout(location=0) in vec2 aPos;
+            layout(location=1) in vec2 aUv;
+            out vec2 vUv;
+            void main() { gl_Position = vec4(aPos, 0.0, 1.0); vUv = aUv; }
+            """;
+        String fragmento = """
+            #version 330 core
+            in vec2 vUv;
+            uniform sampler2D uHud;
+            out vec4 fragColor;
+            void main() { fragColor = texture(uHud, vUv); }
+            """;
+        programaHud = enlazar(vertice, fragmento);
+        uTexturaHud = GL20.glGetUniformLocation(programaHud, "uHud");
+        // Panel pequeño, ubicado arriba a la izquierda sin competir con el minimapa.
+        float[] vertices = {
+            -.985f,.610f, 0,1,  -.585f,.610f, 1,1,  -.585f,.965f, 1,0,
+            -.985f,.610f, 0,1,  -.585f,.965f, 1,0,  -.985f,.965f, 0,0
+        };
+        vaoHud = GL30.glGenVertexArrays(); vboHud = GL15.glGenBuffers();
+        GL30.glBindVertexArray(vaoHud); GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboHud);
+        FloatBuffer datos = BufferUtils.createFloatBuffer(vertices.length); datos.put(vertices).flip();
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, datos, GL15.GL_STATIC_DRAW);
+        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 4 * Float.BYTES, 0);
+        GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, 4 * Float.BYTES, 2L * Float.BYTES);
+        GL20.glEnableVertexAttribArray(0); GL20.glEnableVertexAttribArray(1);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0); GL30.glBindVertexArray(0);
+        texturaHud = GL11.glGenTextures(); GL11.glBindTexture(GL11.GL_TEXTURE_2D, texturaHud);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, HUD_ANCHO, HUD_ALTO, 0,
+                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
     private void crearCuboCompleto() {
@@ -285,7 +345,11 @@ public final class AppCiudad {
     private void crearCiudad() {
         for (int fila = 0; fila < TAMANO_CIUDAD; fila++) for (int columna = 0; columna < TAMANO_CIUDAD; columna++) {
             float x = (columna - 5) * CELDA, z = (fila - 5) * CELDA;
-            if (CIUDAD[fila][columna] == 1) edificios.add(new Caja(x, z, 4.25f, 4.25f));
+            // La caja de colisión abarca edificio y borde de vereda, no solo la fachada.
+            if (CIUDAD[fila][columna] == 1) {
+                float borde = (fila == 4 && columna == 4) ? 4.85f : 3.75f;
+                edificios.add(new Caja(x, z, borde, borde));
+            }
             if (CIUDAD[fila][columna] == 0) calles.add(new float[]{x, z});
         }
     }
@@ -298,11 +362,27 @@ public final class AppCiudad {
         }
     }
 
+    /** Tres recorridos cerrados, alineados a las calles de la cuadrícula ampliada. */
+    private void crearTrafico() {
+        trafico.add(new VehiculoAutonomo(new float[][]{
+                {-31.7f,-48}, {-31.7f,-31.7f}, {-1.7f,-31.7f}, {-1.7f,1.7f},
+                {28.3f,1.7f}, {28.3f,31.7f}, {-1.7f,31.7f}, {-1.7f,48}, {-31.7f,48}
+        }, 6.2f, .14f, .48f, .82f));
+        trafico.add(new VehiculoAutonomo(new float[][]{
+                {1.7f,-48}, {1.7f,-28.3f}, {31.7f,-28.3f}, {31.7f,1.7f},
+                {1.7f,1.7f}, {1.7f,31.7f}, {-28.3f,31.7f}, {-28.3f,-28.3f}, {1.7f,-28.3f}
+        }, 5.5f, .90f, .38f, .13f));
+        trafico.add(new VehiculoAutonomo(new float[][]{
+                {-48,28.3f}, {-31.7f,28.3f}, {-31.7f,-1.7f}, {-1.7f,-1.7f},
+                {-1.7f,-31.7f}, {28.3f,-31.7f}, {28.3f,-1.7f}, {48,-1.7f}, {48,28.3f}
+        }, 5.9f, .22f, .72f, .32f));
+    }
+
     private void bucle() {
         double anterior = GLFW.glfwGetTime();
         while (!GLFW.glfwWindowShouldClose(window)) {
             double ahora = GLFW.glfwGetTime(); float dt = Math.min((float) (ahora - anterior), 0.05f); anterior = ahora;
-            procesarMovimiento(dt); actualizarMision(); renderizar((float) ahora);
+            procesarMovimiento(dt); actualizarTrafico(dt); actualizarMision(); renderizar((float) ahora, dt);
             GLFW.glfwSwapBuffers(window); GLFW.glfwPollEvents();
         }
     }
@@ -310,10 +390,20 @@ public final class AppCiudad {
     private void procesarMovimiento(float dt) {
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) vehiculo.girar(GIRO * dt);
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) vehiculo.girar(-GIRO * dt);
-        float movimiento = 0;
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) movimiento += VELOCIDAD * dt;
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) movimiento -= VELOCIDAD * dt;
-        if (movimiento != 0) {
+        boolean acelera = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS;
+        boolean frena = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS;
+        if (acelera && !frena) {
+            if (vehiculo.getVelocidad() < 0.0f) vehiculo.reducirHaciaCero(FRENADO * dt);
+            else vehiculo.acelerar(ACELERACION * dt, VELOCIDAD_MAXIMA);
+        } else if (frena) {
+            if (vehiculo.getVelocidad() > 0.0f) vehiculo.reducirHaciaCero(FRENADO * dt);
+            else vehiculo.retroceder(ACELERACION * dt, -VELOCIDAD_REVERSA);
+        } else {
+            vehiculo.reducirHaciaCero(ROZAMIENTO * dt);
+        }
+
+        float movimiento = vehiculo.getVelocidad() * dt;
+        if (Math.abs(movimiento) > 0.0001f) {
             float rad = (float) Math.toRadians(vehiculo.getAngulo());
             float candidatoX = vehiculo.getX() + (float) Math.sin(rad) * movimiento;
             float candidatoZ = vehiculo.getZ() + (float) Math.cos(rad) * movimiento;
@@ -324,29 +414,78 @@ public final class AppCiudad {
                 vehiculo.moverA(candidatoX, vehiculo.getZ());
             } else if (!colisiona(vehiculo.getX(), candidatoZ)) {
                 vehiculo.moverA(vehiculo.getX(), candidatoZ);
+            } else {
+                // Un impacto detiene la marcha y evita que el vehículo siga empujando el obstáculo.
+                vehiculo.detener();
             }
         }
+        actualizarTitulo();
+    }
+
+    private void actualizarTrafico(float dt) {
+        for (VehiculoAutonomo auto : trafico) auto.actualizar(dt);
     }
 
     private boolean colisiona(float x, float z) {
         float rad = (float) Math.toRadians(vehiculo.getAngulo());
-        // Proyección de una caja rotada sobre X/Z: elimina los muros invisibles al girar.
-        float mitadX = Math.abs((float) Math.cos(rad)) * COLISION_MITAD_ANCHO + Math.abs((float) Math.sin(rad)) * COLISION_MITAD_LARGO;
-        float mitadZ = Math.abs((float) Math.sin(rad)) * COLISION_MITAD_ANCHO + Math.abs((float) Math.cos(rad)) * COLISION_MITAD_LARGO;
-        if (x - mitadX < -LIMITE || x + mitadX > LIMITE || z - mitadZ < -LIMITE || z + mitadZ > LIMITE) return true;
-        for (Caja e : edificios) if (Math.abs(x - e.x) < mitadX + e.mitadX && Math.abs(z - e.z) < mitadZ + e.mitadZ) return true;
+        float adelanteX = (float) Math.sin(rad), adelanteZ = (float) Math.cos(rad);
+        for (float desplazamiento : new float[]{-EXTREMO_COLISION, 0.0f, EXTREMO_COLISION}) {
+            float puntoX = x + adelanteX * desplazamiento;
+            float puntoZ = z + adelanteZ * desplazamiento;
+            if (puntoX - RADIO_COLISION < -LIMITE || puntoX + RADIO_COLISION > LIMITE
+                    || puntoZ - RADIO_COLISION < -LIMITE || puntoZ + RADIO_COLISION > LIMITE) return true;
+            for (Caja edificio : edificios) {
+                float cercanoX = Math.max(edificio.x - edificio.mitadX, Math.min(puntoX, edificio.x + edificio.mitadX));
+                float cercanoZ = Math.max(edificio.z - edificio.mitadZ, Math.min(puntoZ, edificio.z + edificio.mitadZ));
+                float dx = puntoX - cercanoX, dz = puntoZ - cercanoZ;
+                if (dx * dx + dz * dz < RADIO_COLISION * RADIO_COLISION) return true;
+            }
+        }
         return false;
+    }
+
+    /** Determina si una manzana queda en la línea visual entre cámara y minibús. */
+    private boolean edificioObstruyeVista(float x, float z) {
+        if (!camaraEnSeguimiento) return false;
+        return segmentoCruzaCaja(vistaCamaraX, vistaCamaraZ, vistaObjetivoX, vistaObjetivoZ,
+                x - 3.90f, x + 3.90f, z - 3.90f, z + 3.90f);
+    }
+
+    private static boolean segmentoCruzaCaja(float x0, float z0, float x1, float z1,
+                                             float minX, float maxX, float minZ, float maxZ) {
+        float dx = x1 - x0, dz = z1 - z0;
+        float entrada = 0.0f, salida = 1.0f;
+        float[] origen = {x0, z0}, direccion = {dx, dz};
+        float[] minimo = {minX, minZ}, maximo = {maxX, maxZ};
+        for (int eje = 0; eje < 2; eje++) {
+            if (Math.abs(direccion[eje]) < .0001f) {
+                if (origen[eje] < minimo[eje] || origen[eje] > maximo[eje]) return false;
+            } else {
+                float t1 = (minimo[eje] - origen[eje]) / direccion[eje];
+                float t2 = (maximo[eje] - origen[eje]) / direccion[eje];
+                if (t1 > t2) { float auxiliar = t1; t1 = t2; t2 = auxiliar; }
+                entrada = Math.max(entrada, t1);
+                salida = Math.min(salida, t2);
+                if (entrada > salida) return false;
+            }
+        }
+        return true;
     }
 
     private void reiniciarAuto() {
         vehiculo.reiniciar();
+        camaraSuaveInicializada = false;
         entregasCompletadas = 0;
         generarNuevoDestino();
         actualizarTitulo();
     }
 
     private void actualizarTitulo() {
-        GLFW.glfwSetWindowTitle(window, "Ciudad interactiva - Entregas completadas: " + entregasCompletadas);
+        boolean reversa = vehiculo.getVelocidad() < -0.05f;
+        int kmh = Math.round(Math.abs(vehiculo.getVelocidad()) * 5.0f);
+        String marcha = reversa ? " km/h (reversa)" : " km/h";
+        GLFW.glfwSetWindowTitle(window, "Ciudad interactiva - Velocidad: " + kmh + marcha
+                + " - Entregas completadas: " + entregasCompletadas);
     }
 
     private void actualizarMision() {
@@ -369,7 +508,7 @@ public final class AppCiudad {
         destinoX = calle[0]; destinoZ = calle[1];
     }
 
-    private void renderizar(float tiempo) {
+    private void renderizar(float tiempo, float dt) {
         GL11.glClearColor(noche ? 0.008f : 0.34f, noche ? 0.015f : 0.55f, noche ? 0.045f : 0.82f, 1);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         int[] ancho = new int[1], alto = new int[1];
@@ -382,9 +521,35 @@ public final class AppCiudad {
             float a = tiempo * 0.18f; camX = (float) Math.sin(a) * 92; camZ = (float) Math.cos(a) * 92; camY = 70;
             objetivoX = 0; objetivoY = 0; objetivoZ = 0;
         } else {
-            float r = (float) Math.toRadians(vehiculo.getAngulo()); camX = vehiculo.getX() - (float) Math.sin(r) * 17; camZ = vehiculo.getZ() - (float) Math.cos(r) * 17; camY = 9;
-            objetivoX = vehiculo.getX() + (float) Math.sin(r) * 7; objetivoY = 1.35f; objetivoZ = vehiculo.getZ() + (float) Math.cos(r) * 7;
+            float r = (float) Math.toRadians(vehiculo.getAngulo());
+            float direccionX = (float) Math.sin(r), direccionZ = (float) Math.cos(r);
+            // Tercera persona alta: conserva el estilo de conducción, sin la vista cenital.
+            camX = vehiculo.getX() - direccionX * 14.0f;
+            camZ = vehiculo.getZ() - direccionZ * 14.0f;
+            camY = 14.0f;
+            objetivoX = vehiculo.getX() + direccionX * 5.0f;
+            objetivoY = 1.45f;
+            objetivoZ = vehiculo.getZ() + direccionZ * 5.0f;
         }
+        if (!camaraSuaveInicializada || camaraOrbital) {
+            camaraSuaveX = camX; camaraSuaveY = camY; camaraSuaveZ = camZ;
+            objetivoSuaveX = objetivoX; objetivoSuaveY = objetivoY; objetivoSuaveZ = objetivoZ;
+            camaraSuaveInicializada = true;
+        } else {
+            // Seguimiento continuo: amortigua los giros del minibús y evita vibraciones visuales.
+            float respuesta = 1.0f - (float) Math.exp(-dt * 9.0f);
+            camaraSuaveX += (camX - camaraSuaveX) * respuesta;
+            camaraSuaveY += (camY - camaraSuaveY) * respuesta;
+            camaraSuaveZ += (camZ - camaraSuaveZ) * respuesta;
+            objetivoSuaveX += (objetivoX - objetivoSuaveX) * respuesta;
+            objetivoSuaveY += (objetivoY - objetivoSuaveY) * respuesta;
+            objetivoSuaveZ += (objetivoZ - objetivoSuaveZ) * respuesta;
+        }
+        camX = camaraSuaveX; camY = camaraSuaveY; camZ = camaraSuaveZ;
+        objetivoX = objetivoSuaveX; objetivoY = objetivoSuaveY; objetivoZ = objetivoSuaveZ;
+        camaraEnSeguimiento = !camaraOrbital;
+        vistaCamaraX = camX; vistaCamaraZ = camZ;
+        vistaObjetivoX = objetivoX; vistaObjetivoZ = objetivoZ;
         mirar(vista, camX, camY, camZ, objetivoX, objetivoY, objetivoZ, 0, 1, 0);
         dibujarEscena(tiempo, vista, proyeccion, camX, camY, camZ);
 
@@ -401,6 +566,7 @@ public final class AppCiudad {
             dibujarMapaUI(tiempo);
             GL11.glViewport(0, 0, ancho[0], alto[0]);
         }
+        dibujarPanelConduccionUI();
     }
 
     private void dibujarEscena(float tiempo, float[] matrizVista, float[] matrizProyeccion, float camX, float camY, float camZ) {
@@ -411,8 +577,40 @@ public final class AppCiudad {
         actualizarFocos(); GL20.glUniform3fv(uFocosPos, posicionFocos); GL20.glUniform3fv(uFocosDir, direccionFocos); GL20.glUniform1i(uFocosActivos, focos ? 1 : 0);
         GL30.glBindVertexArray(vaoCubo);
         dibujarCubo(0, -0.35f, 0, 110, 0.5f, 110, 0, 0.14f, 0.15f, 0.17f, 0, 0, 0);
-        dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo); dibujarMinibus();
+        dibujarCiudad(); dibujarPasosPeatonales(); dibujarLamparas(); dibujarSemaforos(tiempo); dibujarDestino(tiempo);
+        dibujarTraficoAutonomo(); dibujarMinibus();
         GL30.glBindVertexArray(0); GL20.glUseProgram(0);
+    }
+
+    /** Autos pequeños visibles, con carrocería, cabina y luces; no participan en la colisión del jugador. */
+    private void dibujarTraficoAutonomo() {
+        for (VehiculoAutonomo auto : trafico) {
+            float r = (float) Math.toRadians(auto.angulo);
+            float frenteX = (float) Math.sin(r), frenteZ = (float) Math.cos(r);
+            float ladoX = (float) Math.cos(r), ladoZ = -(float) Math.sin(r);
+            // Carrocería cerrada: techo claro, cabina con vidrio y bandas locales de color.
+            dibujarCubo(auto.x, .52f, auto.z, 2.18f, .72f, 4.20f, auto.angulo, auto.rojo, auto.verde, auto.azul, 0, 0, 0);
+            dibujarCubo(auto.x, .78f, auto.z, 2.22f, .14f, 4.24f, auto.angulo, .96f, .96f, .91f, 0, 0, 0);
+            dibujarCubo(auto.x - frenteX * .24f, 1.08f, auto.z - frenteZ * .24f, 1.82f, .56f, 2.16f, auto.angulo, .055f, .20f, .30f, .01f, .025f, .04f);
+            dibujarPlano(auto.x - frenteX * .24f, 1.38f, auto.z - frenteZ * .24f, 1.72f, 2.06f, auto.angulo, .91f, .93f, .88f, 0, 0, 0);
+            // Parabrisas y luneta hacen legible el sentido de circulación.
+            float frenteCabinaX = auto.x + frenteX * 1.12f, frenteCabinaZ = auto.z + frenteZ * 1.12f;
+            float atrasCabinaX = auto.x - frenteX * 1.60f, atrasCabinaZ = auto.z - frenteZ * 1.60f;
+            dibujarCubo(frenteCabinaX, 1.06f, frenteCabinaZ, 1.70f, .42f, .08f, auto.angulo, .08f, .29f, .42f, .01f, .035f, .06f);
+            dibujarCubo(atrasCabinaX, 1.05f, atrasCabinaZ, 1.70f, .38f, .08f, auto.angulo, .08f, .20f, .28f, 0, 0, 0);
+            dibujarCubo(auto.x, .68f, auto.z, 2.21f, .13f, 4.26f, auto.angulo, .05f, .32f, .68f, 0, 0, 0);
+            for (float lateral : new float[]{-.98f, .98f}) for (float longitudinal : new float[]{-1.25f, 1.25f}) {
+                dibujarCubo(auto.x + ladoX * lateral + frenteX * longitudinal, .35f,
+                        auto.z + ladoZ * lateral + frenteZ * longitudinal, .35f, .56f, .70f,
+                        auto.angulo, .025f, .03f, .04f, 0, 0, 0);
+            }
+            float fx = auto.x + frenteX * 2.12f, fz = auto.z + frenteZ * 2.12f;
+            dibujarCubo(fx + ladoX * .58f, .68f, fz + ladoZ * .58f, .24f, .17f, .08f, auto.angulo, 1, .88f, .52f, .12f, .08f, .02f);
+            dibujarCubo(fx - ladoX * .58f, .68f, fz - ladoZ * .58f, .24f, .17f, .08f, auto.angulo, 1, .88f, .52f, .12f, .08f, .02f);
+            float rx = auto.x - frenteX * 2.12f, rz = auto.z - frenteZ * 2.12f;
+            dibujarCubo(rx + ladoX * .60f, .67f, rz + ladoZ * .60f, .24f, .16f, .08f, auto.angulo, .90f, .03f, .03f, .18f, 0, 0);
+            dibujarCubo(rx - ladoX * .60f, .67f, rz - ladoZ * .60f, .24f, .16f, .08f, auto.angulo, .90f, .03f, .03f, .18f, 0, 0);
+        }
     }
 
     /** Construye un minimapa 2D contrastado: la ciudad se lee de un vistazo. */
@@ -453,6 +651,16 @@ public final class AppCiudad {
                 xAuto + frenteX * .045f - ladoX * .018f, yAuto + frenteY * .045f - ladoY * .018f,
                 .96f, .98f, 1.0f);
 
+        // Marcadores del tránsito: permiten comprobar que los tres vehículos siguen circulando.
+        for (VehiculoAutonomo auto : trafico) {
+            float autoX = auto.x * escala, autoY = -auto.z * escala;
+            float ar = (float) Math.toRadians(auto.angulo);
+            float afx = (float) Math.sin(ar), afy = -(float) Math.cos(ar);
+            float alx = (float) Math.cos(ar), aly = (float) Math.sin(ar);
+            indice = agregarRectOrientado(vertices, indice, autoX, autoY, afx, afy, alx, aly,
+                    .032f, .016f, auto.rojo, auto.verde, auto.azul);
+        }
+
         float pulso = .042f + .008f * (float) Math.sin(tiempo * 4.0f);
         indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino + pulso, yDestino, xDestino, yDestino - pulso, .04f, .18f, .52f);
         indice = agregarTriangulo(vertices, indice, xDestino, yDestino + pulso, xDestino - pulso, yDestino, xDestino, yDestino - pulso, .04f, .18f, .52f);
@@ -469,6 +677,60 @@ public final class AppCiudad {
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, indice / 5);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
+        GL20.glUseProgram(0);
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+    }
+
+    /** Panel superpuesto: estado del viaje y ayuda breve sin ocupar la vista de conducción. */
+    private void dibujarPanelConduccionUI() {
+        Graphics2D g = imagenHud.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(new Color(8, 30, 23, 235));
+        g.fillRoundRect(0, 0, HUD_ANCHO, HUD_ALTO, 20, 20);
+        g.setColor(new Color(0, 111, 55));
+        g.fillRoundRect(0, 0, HUD_ANCHO, 37, 20, 20);
+        g.fillRect(0, 18, HUD_ANCHO, 19);
+        g.setColor(new Color(248, 248, 240));
+        g.fillRect(16, 33, HUD_ANCHO - 32, 3);
+        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+        g.drawString("TABLERO DEL MINIBUS", 20, 26);
+        int kmh = Math.round(Math.abs(vehiculo.getVelocidad()) * 5.0f);
+        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
+        g.setColor(new Color(255, 197, 42));
+        g.drawString("VELOCIDAD  " + kmh + " km/h", 20, 73);
+        g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 17));
+        g.setColor(new Color(239, 245, 237));
+        g.drawString("FAROS: " + (focos ? "ENCENDIDOS" : "APAGADOS"), 20, 105);
+        g.drawString("MODO: " + (noche ? "NOCHE" : "DIA"), 20, 130);
+        g.setColor(focos ? new Color(255, 207, 54) : new Color(83, 92, 84));
+        g.fillOval(390, 87, 22, 22);
+        g.setColor(noche ? new Color(96, 151, 255) : new Color(249, 189, 59));
+        g.fillOval(420, 87, 22, 22);
+        g.setColor(new Color(166, 211, 178));
+        g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        g.drawString("W/S velocidad   A/D girar   F focos   N dia/noche", 20, 158);
+        g.setColor(new Color(255, 255, 255, 80));
+        g.setStroke(new BasicStroke(1.4f));
+        g.drawRoundRect(1, 1, HUD_ANCHO - 3, HUD_ALTO - 3, 19, 19);
+        g.dispose();
+
+        ByteBuffer pixeles = BufferUtils.createByteBuffer(HUD_ANCHO * HUD_ALTO * 4);
+        for (int y = 0; y < HUD_ALTO; y++) for (int x = 0; x < HUD_ANCHO; x++) {
+            int argb = imagenHud.getRGB(x, y);
+            pixeles.put((byte) ((argb >> 16) & 0xFF)).put((byte) ((argb >> 8) & 0xFF))
+                    .put((byte) (argb & 0xFF)).put((byte) ((argb >> 24) & 0xFF));
+        }
+        pixeles.flip();
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL20.glUseProgram(programaHud);
+        GL20.glUniform1i(uTexturaHud, 0);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texturaHud);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, HUD_ANCHO, HUD_ALTO, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixeles);
+        GL30.glBindVertexArray(vaoHud);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
+        GL30.glBindVertexArray(0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL20.glUseProgram(0);
         GL11.glEnable(GL11.GL_DEPTH_TEST);
     }
@@ -656,16 +918,33 @@ public final class AppCiudad {
                 dibujarPlanoPavimento(x, .18f, z, 8.92f, 8.92f, .08f, .085f, .085f, .075f, .078f, .075f);
                 dibujarMarcasViales(x, z, fila, columna);
             } else if (tipo == 1) {
+                // Evita que una fachada entre cámara y minibús cubra toda la pantalla.
+                if (edificioObstruyeVista(x, z)) continue;
+                // Vereda continua alrededor de la manzana: funciona como borde visual del edificio.
+                dibujarPlanoPavimento(x, .12f, z, 9.82f, 9.82f, .57f, .54f, .47f, .02f, .02f, .018f);
                 if (fila == 4 && columna == 4) {
                     dibujarCatedralCruceña(x, z);
                     continue;
                 }
-                float alto = 9 + ((fila * 7 + columna * 5) % 4) * 4;
+                int variante = (fila * 7 + columna * 5) % 4;
+                float alto = 8.5f + variante * 2.8f;
+                float ancho = 6.10f + ((fila * 3 + columna * 2) % 3) * .28f;
+                float fondo = 6.10f + ((fila * 5 + columna) % 3) * .28f;
                 float[][] fachadas = {{.60f, .31f, .18f}, {.77f, .66f, .48f}, {.72f, .70f, .62f}, {.49f, .28f, .20f}};
                 float[] color = fachadas[(fila * 3 + columna) % fachadas.length];
-                dibujarCubo(x, alto / 2, z, 8.5f, alto, 8.5f, 0, color[0], color[1], color[2], 0, 0, 0);
-                dibujarCubo(x, alto + .25f, z, 8.7f, .5f, 8.7f, 0, .31f, .20f, .14f, 0, 0, 0);
-                dibujarVentanasEdificio(x, z, alto);
+                // Base, volumen superior y cornisa: cada manzana tiene una silueta distinta y cerrada.
+                dibujarCubo(x, alto * .34f, z, ancho, alto * .68f, fondo, 0, color[0], color[1], color[2], 0, 0, 0);
+                dibujarCubo(x + (variante % 2 == 0 ? .42f : -.42f), alto * .84f, z,
+                        ancho * .78f, alto * .32f, fondo * .78f, 0,
+                        color[0] * .90f, color[1] * .90f, color[2] * .90f, 0, 0, 0);
+                // Techo completo y pretil: evita que el volumen parezca hueco desde la cámara elevada.
+                dibujarCubo(x, alto + .24f, z, ancho + .46f, .48f, fondo + .46f, 0, .31f, .20f, .14f, 0, 0, 0);
+                dibujarCubo(x, alto + .58f, z - fondo / 2, ancho + .54f, .22f, .18f, 0, .38f, .25f, .17f, 0, 0, 0);
+                dibujarCubo(x, alto + .58f, z + fondo / 2, ancho + .54f, .22f, .18f, 0, .38f, .25f, .17f, 0, 0, 0);
+                dibujarCubo(x - ancho / 2, alto + .58f, z, .18f, .22f, fondo + .54f, 0, .38f, .25f, .17f, 0, 0, 0);
+                dibujarCubo(x + ancho / 2, alto + .58f, z, .18f, .22f, fondo + .54f, 0, .38f, .25f, .17f, 0, 0, 0);
+                if (variante % 2 == 0) dibujarCubo(x, alto + .70f, z, 1.35f, .32f, .92f, 0, .20f, .23f, .24f, 0, 0, 0);
+                dibujarVentanasEdificio(x, z, alto, ancho, fondo);
             } else {
                 dibujarCubo(x, -0.02f, z, 9.4f, .18f, 9.4f, 0, .08f, .28f, .10f, 0, 0, 0);
                 if (fila == 1 && columna == 4) {
@@ -769,14 +1048,18 @@ public final class AppCiudad {
         }
     }
 
-    private void dibujarVentanasEdificio(float x, float z, float alto) {
-        float brillo = noche ? .92f : .08f;
-        for (float y = 2.1f; y < alto - 1; y += 3.2f) {
-            for (float desplazamiento : new float[]{-2.65f, 0, 2.65f}) {
-                dibujarCubo(x + desplazamiento, y, z + 4.28f, 1.25f, 1.15f, .08f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
-                dibujarCubo(x + desplazamiento, y, z - 4.28f, 1.25f, 1.15f, .08f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
-                dibujarCubo(x + 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
-                dibujarCubo(x - 4.28f, y, z + desplazamiento, .08f, 1.15f, 1.25f, 0, .10f, .32f, .36f, brillo * .25f, brillo * .62f, brillo * .72f);
+    private void dibujarVentanasEdificio(float x, float z, float alto, float ancho, float fondo) {
+        float bordeX = ancho / 2 + .045f, bordeZ = fondo / 2 + .045f;
+        for (float y = 2.0f; y < alto * .68f - .6f; y += 2.8f) {
+            for (float desplazamiento : new float[]{-ancho * .27f, 0, ancho * .27f}) {
+                int patron = Math.abs((int) (y * 10 + desplazamiento * 10));
+                // Ventanas cálidas, no emisores que iluminan toda la calle.
+                float brillo = noche && patron % 3 != 0 ? .42f : .012f;
+                float er = brillo * .90f, eg = brillo * .52f, eb = brillo * .10f;
+                dibujarCubo(x + desplazamiento, y, z + bordeZ, .90f, .92f, .08f, 0, .95f, .66f, .22f, er, eg, eb);
+                dibujarCubo(x + desplazamiento, y, z - bordeZ, .90f, .92f, .08f, 0, .95f, .66f, .22f, er, eg, eb);
+                dibujarCubo(x + bordeX, y, z + desplazamiento, .08f, .92f, .90f, 0, .95f, .66f, .22f, er, eg, eb);
+                dibujarCubo(x - bordeX, y, z + desplazamiento, .08f, .92f, .90f, 0, .95f, .66f, .22f, er, eg, eb);
             }
         }
     }
@@ -800,7 +1083,7 @@ public final class AppCiudad {
         for (int i = 0; i < 9; i++) {
             float x = posicionLamparas[i * 3], z = posicionLamparas[i * 3 + 2];
             dibujarCubo(x, 3.3f, z, .18f, 6.6f, .18f, 0, .12f, .12f, .13f, 0, 0, 0);
-            dibujarCubo(x, 6.8f, z, .8f, .35f, .8f, 0, .36f, .28f, .12f, 1.0f, .48f, .08f);
+            dibujarCubo(x, 6.8f, z, .8f, .35f, .8f, 0, .36f, .28f, .12f, 1.85f, .95f, .18f);
         }
     }
 
@@ -914,8 +1197,8 @@ public final class AppCiudad {
             dibujarCubo(wx, .42f, wz, .20f, .40f, 1.08f, vehiculo.getAngulo(), .55f, .58f, .61f, 0, 0, 0);
         }
         float fx = vehiculo.getX() + adelanteX * 3.68f, fz = vehiculo.getZ() + adelanteZ * 3.68f;
-        dibujarCubo(fx + ladoX * .86f, .88f, fz + ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
-        dibujarCubo(fx - ladoX * .86f, .88f, fz - ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?1:.05f, focos?1:.05f, focos?0.55f:.02f);
+        dibujarCubo(fx + ladoX * .86f, .88f, fz + ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?2.0f:.05f, focos?2.0f:.05f, focos?1.15f:.02f);
+        dibujarCubo(fx - ladoX * .86f, .88f, fz - ladoZ * .86f, .42f, .28f, .12f, vehiculo.getAngulo(), .94f,.94f,.76f, focos?2.0f:.05f, focos?2.0f:.05f, focos?1.15f:.02f);
     }
 
     /** Dibuja un dígito de siete segmentos en el cartel trasero del minibús. */
@@ -950,9 +1233,9 @@ public final class AppCiudad {
         for (int i = 0; i < 2; i++) {
             float lado = i == 0 ? -.86f : .86f;
             posicionFocos[i * 3] = vehiculo.getX() + adelanteX * 3.68f + ladoX * lado;
-            posicionFocos[i * 3 + 1] = .88f;
+            posicionFocos[i * 3 + 1] = 1.02f;
             posicionFocos[i * 3 + 2] = vehiculo.getZ() + adelanteZ * 3.68f + ladoZ * lado;
-            direccionFocos[i * 3] = adelanteX; direccionFocos[i * 3 + 1] = -.08f; direccionFocos[i * 3 + 2] = adelanteZ;
+            direccionFocos[i * 3] = adelanteX; direccionFocos[i * 3 + 1] = -.13f; direccionFocos[i * 3 + 2] = adelanteZ;
         }
     }
 
@@ -983,13 +1266,61 @@ public final class AppCiudad {
     }
 
     private void liberar() {
-        GL20.glDeleteProgram(programa); GL20.glDeleteProgram(programaMapa);
-        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboPlano); GL15.glDeleteBuffers(vboEsfera); GL15.glDeleteBuffers(vboMapa);
-        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoPlano); GL30.glDeleteVertexArrays(vaoEsfera); GL30.glDeleteVertexArrays(vaoMapa);
+        GL20.glDeleteProgram(programa); GL20.glDeleteProgram(programaMapa); GL20.glDeleteProgram(programaHud);
+        GL15.glDeleteBuffers(vboCubo); GL15.glDeleteBuffers(vboPlano); GL15.glDeleteBuffers(vboEsfera); GL15.glDeleteBuffers(vboMapa); GL15.glDeleteBuffers(vboHud);
+        GL30.glDeleteVertexArrays(vaoCubo); GL30.glDeleteVertexArrays(vaoPlano); GL30.glDeleteVertexArrays(vaoEsfera); GL30.glDeleteVertexArrays(vaoMapa); GL30.glDeleteVertexArrays(vaoHud);
+        GL11.glDeleteTextures(texturaHud);
         GLFW.glfwDestroyWindow(window); GLFW.glfwTerminate();
     }
 
     private record Caja(float x, float z, float mitadX, float mitadZ) { }
+
+    /** Movimiento independiente del jugador: avanza de punto a punto y vuelve a iniciar su ruta. */
+    private static final class VehiculoAutonomo {
+        private final float[][] ruta;
+        private final float velocidad;
+        private final float rojo, verde, azul;
+        private float x, z, angulo;
+        private int siguiente;
+
+        private VehiculoAutonomo(float[][] ruta, float velocidad, float rojo, float verde, float azul) {
+            this.ruta = ruta;
+            this.velocidad = velocidad;
+            this.rojo = rojo;
+            this.verde = verde;
+            this.azul = azul;
+            x = ruta[0][0]; z = ruta[0][1]; siguiente = 1 % ruta.length;
+            orientarHaciaSiguiente();
+        }
+
+        private void actualizar(float dt) {
+            float restante = velocidad * dt;
+            // Un cuadro lento puede atravesar varios puntos: se conserva el recorrido sin saltos.
+            while (restante > .0001f) {
+                float objetivoX = ruta[siguiente][0], objetivoZ = ruta[siguiente][1];
+                float dx = objetivoX - x, dz = objetivoZ - z;
+                float distancia = (float) Math.sqrt(dx * dx + dz * dz);
+                if (distancia < .001f) {
+                    x = objetivoX; z = objetivoZ; siguiente = (siguiente + 1) % ruta.length;
+                    orientarHaciaSiguiente();
+                    continue;
+                }
+                angulo = (float) Math.toDegrees(Math.atan2(dx, dz));
+                float avance = Math.min(restante, distancia);
+                x += dx / distancia * avance; z += dz / distancia * avance;
+                restante -= avance;
+                if (avance + .001f >= distancia) {
+                    x = objetivoX; z = objetivoZ; siguiente = (siguiente + 1) % ruta.length;
+                    orientarHaciaSiguiente();
+                }
+            }
+        }
+
+        private void orientarHaciaSiguiente() {
+            float dx = ruta[siguiente][0] - x, dz = ruta[siguiente][1] - z;
+            angulo = (float) Math.toDegrees(Math.atan2(dx, dz));
+        }
+    }
 
     private static float[] identidad() { float[] m = new float[16]; m[0] = m[5] = m[10] = m[15] = 1; return m; }
     private static float[] modelo(float x, float y, float z, float sx, float sy, float sz, float grados) {

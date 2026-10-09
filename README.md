@@ -20,6 +20,7 @@
   <a href="#-inicio-rápido">Inicio rápido</a> ·
   <a href="#-controles">Controles</a> ·
   <a href="#-experiencia-urbana">Funciones</a> ·
+  <a href="#-tráfico-autónomo-e-interfaz">Tráfico e interfaz</a> ·
   <a href="#-arquitectura">Arquitectura</a>
 </p>
 
@@ -30,19 +31,20 @@
 
 ## ✨ ¿Qué hace especial a esta ciudad?
 
-| 🌆 Mundo vivo | 💡 Luz que cambia | 🎯 Juego de entregas |
+| 🌆 Mundo vivo | 💡 Luz que cambia | 🚦 Tráfico y entregas |
 | :--- | :--- | :--- |
-| 11 × 11 celdas conectadas, edificios de alturas variables, parques y pasos peatonales. | Día/noche, farolas con atenuación, faros direccionales y ventanas nocturnas emisivas. | Carrito de somó 3D animado, destino aleatorio válido y contador de entregas actualizado. |
+| 11 × 11 celdas conectadas, edificios de alturas variables, parques y pasos peatonales. | Día/noche contrastado, farolas con atenuación, faros direccionales y ventanas cálidas. | Tres vehículos autónomos, carrito de somó 3D, destino aleatorio y contador de entregas. |
 
 ```mermaid
 flowchart LR
-    A[⌨️ Conducción] --> B{🚧 Colisión AABB}
+    A[⌨️ Conducción] --> B{🚧 Colisión urbana}
     B -->|Camino libre| C[🚗 Ciudad 3D]
     B -->|Edificio o límite| A
     C --> D[🎯 Carrito de somó]
     D -->|Llegada| E[✅ Nueva misión]
     C --> F[💡 Iluminación GLSL]
-    C --> G[🗺️ Minimapa cenital]
+    C --> G[🗺️ Minimapa y ruta GPS]
+    C --> H[🚗 Tráfico autónomo]
 ```
 
 ## 🚀 Inicio rápido
@@ -85,19 +87,20 @@ mvn exec:java
 ### 🏙️ Ciudad y conducción
 
 - **Mapa expandido:** cuadrícula de 11 × 11 celdas, más de 12 manzanas construidas y múltiples parques conectados por calles.
-- **Minibús 3D:** inspirado en el transporte urbano cruceño, controlado con `delta time`, con límites físicos y detección de colisiones AABB.
-- **Dos cámaras:** una cámara de seguimiento para conducir y una orbital para apreciar el escenario completo.
+- **Minibús Línea 72:** inspirado en el transporte urbano cruceño, con techo cerrado, franjas azul y roja, luces, parabrisas y señal de ruta visible.
+- **Conducción estable:** aceleración, frenado, reversa limitada y movimiento dependiente de `delta time`. La colisión se resuelve con tres apoyos circulares y deslizamiento por ejes para evitar atascos en esquinas.
+- **Dos cámaras:** una cámara elevada en tercera persona con suavizado y ocultamiento temporal de manzanas que bloquean la vista, más una cámara orbital para apreciar el escenario completo.
 
 ### 💡 Iluminación que transforma la escena
 
 ```text
 ☀️ Día  → luz ambiental + direccional
-🌙 Noche → farolas cálidas + ventanas emisivas + faros del minibús
+🌙 Noche → ambiente oscuro + farolas cálidas + ventanas iluminadas + faros del minibús
 ```
 
 - VBO de cubo completo: **36 vértices**, posiciones `vec3` y normales unitarias `vec3`.
 - Cálculo de luz difusa en GLSL a partir de las normales reales de cada superficie.
-- Nueve farolas con atenuación cuadrática y dos focos delanteros orientados con el vehículo.
+- Nueve farolas con atenuación cuadrática, dos focos delanteros orientados con el vehículo y un balance nocturno que conserva contraste visual.
 
 ### 🌳 Detalles que le dan vida
 
@@ -108,10 +111,16 @@ mvn exec:java
 - **Identidad cruceña:** una plaza monumental con una estatua original inspirada en el Cristo y dos plazas cívicas con banderas verde, blanco y verde.
 - **Paleta local:** fachadas de ladrillo terracota, crema y estilo colonial; árboles urbanos y una catedral original como hito visual.
 
+### 🚗 Tráfico autónomo e interfaz
+
+- **Tres vehículos autónomos:** circulan continuamente por circuitos cerrados sobre la red vial, actualizan su velocidad, posición y orientación, y realizan giros en intersecciones sin atravesar edificios ni salir del mapa.
+- **Tablero de conducción:** interfaz con tipografía legible que muestra velocidad, estado de los faros, modo día/noche y un recordatorio de controles.
+- **Presentación verificable:** el minimapa incluye marcadores de colores para los vehículos autónomos, además de la ruta GPS amarilla, el minibús y el destino activo.
+
 ### 🗺️ Minimapa y misiones
 
 - Segunda pasada de render mediante `glViewport` y proyección ortográfica.
-- Vista superior con norte hacia arriba, ciudad completa, marcador de orientación del minibús y destino actual.
+- Vista superior con norte hacia arriba, ciudad completa, marcador de orientación del minibús, vehículos autónomos y destino actual.
 - Carrito de somó flotante y animado: al alcanzarlo, se genera una nueva misión en una calle transitable.
 
 ## 🧩 Arquitectura
@@ -122,30 +131,33 @@ src/main/java/com/graphics/AppCiudad.java
 ├── Inicialización GLFW + OpenGL
 ├── VAO / VBO reutilizable para todos los cubos
 ├── Shaders GLSL: iluminación, emisión y focos
-├── Matriz urbana, edificios y colisiones AABB
-├── Minibús, cámaras y entrada por teclado
+├── Matriz urbana, edificios y colisiones circulares
+├── Minibús, tráfico autónomo, cámaras y entrada por teclado
 ├── Decoración: parques, bancos, farolas y semáforos
-└── Doble render: vista principal + minimapa
+└── Tablero de interfaz + vista principal + minimapa
 ```
 
 | Componente | Decisión de diseño |
 | --- | --- |
 | Geometría | Todos los objetos se componen de cubos transformados con su matriz de modelo. |
-| Colisiones | Caja AABB del vehículo frente a edificios y límites urbanos. |
+| Colisiones | Tres apoyos circulares del minibús frente a edificios y límites urbanos, con deslizamiento por ejes. |
 | Materiales | Uniformes de color y emisión; las ventanas incrementan brillo de noche. |
-| Iluminación | Luz ambiental, direccional, 9 luces puntuales y 2 focos tipo spot. |
+| Iluminación | Luz ambiental y direccional, 9 farolas, 2 focos tipo spot y emisión moderada de ventanas nocturnas. |
 | Misiones | Selección aleatoria de una celda de calle y comprobación de distancia radial. |
+| Tráfico | Tres vehículos con rutas cerradas, velocidad constante y giros automáticos sobre calles. |
+| Interfaz | Tablero de conducción renderizado como textura dinámica con tipografía normal. |
 
 ## 🗂️ Estructura del repositorio
 
 ```text
 ciudad-interactiva-opengl/
 ├── assets/
-│   └── ciudad-interactiva-hero.png   # Ilustración de portada
+│   └── ciudad-santa-cruz-hero.png    # Ilustración de portada
 ├── src/main/java/com/graphics/
 │   ├── AppCiudad.java                # Ciudad, render, luces y misiones
 │   └── Vehiculo.java                 # Estado y movimiento del minibús
 ├── .gitignore
+├── DocumentacionProyectoCiudad_Completa.docx
 ├── pom.xml
 └── README.md
 ```
@@ -155,8 +167,8 @@ ciudad-interactiva-opengl/
 <br>
 
 - Los semáforos tienen alcance visual, por lo que no detienen al minibús.
-- La colisión usa una caja alineada a los ejes para priorizar claridad y rendimiento.
-- La ciudad se construye proceduralmente con cubos y shaders; no utiliza texturas ni modelos externos.
+- El tráfico autónomo es demostrativo: no colisiona con el minibús para no bloquear el recorrido del jugador.
+- La ciudad se construye proceduralmente con cubos y shaders; la única textura dinámica es el tablero de interfaz generado durante la ejecución.
 </details>
 
 ## 👤 Autor
